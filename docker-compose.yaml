@@ -1,0 +1,72 @@
+version: "3.9"
+services:
+  old1:
+    image: attestant/dirk
+    hostname: old1
+    restart: always
+    command: --base-dir /data
+    volumes:
+      - type: bind
+        source: ./podman-data/old/1
+        target: /data
+        read_only: false
+  old2:
+    image: attestant/dirk
+    hostname: old2
+    restart: always
+    command: --base-dir /data
+    volumes:
+      - type: bind
+        source: ./podman-data/old/2
+        target: /data
+        read_only: false
+  old3:
+    image: attestant/dirk
+    hostname: old3
+    restart: always
+    command: --base-dir /data
+    volumes:
+      - type: bind
+        source: ./podman-data/old/3
+        target: /data
+        read_only: false
+  new1:
+    image: attestant/dirk
+    hostname: new1
+    restart: always
+    command: --base-dir /data
+    volumes:
+      - type: bind
+        source: ./podman-data/new/1
+        target: /data
+        read_only: false
+  new2:
+    image: attestant/dirk
+    hostname: new2
+    restart: always
+    command: --base-dir /data
+    volumes:
+      - type: bind
+        source: ./podman-data/new/2
+        target: /data
+        read_only: false
+  new3:
+    image: attestant/dirk
+    hostname: new3
+    restart: always
+    command: --base-dir /data
+    volumes:
+      - type: bind
+        source: ./podman-data/new/3
+        target: /data
+        read_only: false
+  admin:
+    image: wealdtech/ethdo
+    hostname: admin
+    restart: always
+    entrypoint: bash -c "sleep 10000"
+    volumes:
+      - type: bind
+        source: ./podman-data/admin
+        target: /data
+        read_only: false

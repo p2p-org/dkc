@@ -1,0 +1,11 @@
+# Nix
+.direnv
+.envrc
+
+# Go
+main
+
+# Test
+podman-data
+keystores
+wallets
