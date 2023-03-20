@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/selfuryon/dkc/cmd"
+	"github.com/p2p-org/dkc/cmd"
 )
 
 func main() {

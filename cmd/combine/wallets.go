@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+
 	// "log"
 	"strings"
-  // "encoding/json"
+	// "encoding/json"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+
 	// e2wallet "github.com/wealdtech/go-eth2-wallet"
 	// filesystem "github.com/wealdtech/go-eth2-wallet-store-filesystem"
 	e2wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
@@ -18,16 +20,17 @@ import (
 type WalletName = string
 type AccountName = string
 type Key = []byte
-type KeyMapping= map[WalletName]map[AccountName][]Key
+type KeyMapping = map[WalletName]map[AccountName][]Key
 
 func getAccountKey(ctx context.Context, account e2wtypes.Account) (Key, error) {
 	passphrases_path := viper.GetString("passphrases")
+
 	if passphrases_path == "" {
 		return nil, errors.New("No passphrase file")
 	}
 	content, err := ioutil.ReadFile(passphrases_path)
 	if err != nil {
-			return nil, errors.Wrap(err, "failed to read passphrase file")
+		return nil, errors.Wrap(err, "failed to read passphrase file")
 	}
 
 	passphrases := strings.Split(string(content), "\n")
@@ -60,7 +63,6 @@ func getAccountKey(ctx context.Context, account e2wtypes.Account) (Key, error) {
 	}
 	return key.Marshal(), nil
 }
-
 
 // func getWalletKeys(ctx context.Context, location string) {
 //   keys := make(map[WalletName]map[AccountName][]Key)

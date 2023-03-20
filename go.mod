@@ -1,4 +1,4 @@
-module github.com/selfuryon/dkc
+module github.com/p2p/dkc
 
 go 1.19
 
