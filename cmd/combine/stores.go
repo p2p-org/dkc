@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
+	"regexp"
 
+	"github.com/p2p-org/dkc/service/crypto/bls"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	e2wallet "github.com/wealdtech/go-eth2-wallet"
@@ -20,8 +23,13 @@ type DirkStore struct {
 
 type WalletData struct {
 	Name     string
-	Accounts map[string][]string
+	Accounts Accounts
+	IDs      []uint64
 }
+
+type Peers = map[uint64]string
+
+type Accounts = map[string][][]byte
 
 func loadStore(ctx context.Context, location string) (*DirkStore, error) {
 	dirkStore := DirkStore{}
@@ -63,8 +71,24 @@ func combineWallets(ctx context.Context) ([]WalletData, error) {
 		fmt.Println(err)
 	}
 
-	accountDatas := make(map[string][]string)
-	walletData := make([]WalletData, len(stores))
+	var peers Peers
+	participantsIDs := make([]uint64, 0)
+	err = viper.UnmarshalKey("peers", &peers)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	accountDatas := make(Accounts)
+	walletData := make([]WalletData, 0)
+
+	for _, store := range stores {
+		for id := range peers {
+			peerExists, _ := regexp.MatchString(filepath.Base(store.Location)+":.*", peers[id])
+			if peerExists {
+				participantsIDs = append(participantsIDs, id)
+			}
+		}
+	}
 
 	for _, store := range stores {
 		fmt.Println(store.Location)
@@ -78,16 +102,24 @@ func combineWallets(ctx context.Context) ([]WalletData, error) {
 				bs, _ := json.Marshal(key)
 				accountDatas[account.Name()] = append(
 					accountDatas[account.Name()],
-					string(bs),
+					bs,
 				)
 			}
 			walletData = append(walletData,
 				WalletData{
 					Name:     wallet.Name(),
 					Accounts: accountDatas,
+					IDs:      participantsIDs,
 				},
 			)
 		}
 	}
+
+	for _, wallet := range walletData {
+		for _, account := range wallet.Accounts {
+			_, _ = bls.Recover(ctx, account, wallet.IDs)
+		}
+	}
+
 	return walletData, nil
 }
