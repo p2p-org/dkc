@@ -2,9 +2,9 @@ package combine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
-  "encoding/json"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -16,6 +16,11 @@ import (
 type DirkStore struct {
 	Location string
 	Wallets  []e2wtypes.Wallet
+}
+
+type WalletData struct {
+	Name     string
+	Accounts map[string][]string
 }
 
 func loadStore(ctx context.Context, location string) (*DirkStore, error) {
@@ -52,11 +57,15 @@ func loadStores(ctx context.Context) ([]DirkStore, error) {
 	return stores, nil
 }
 
-func combineWallets(ctx context.Context) (string, error) {
+func combineWallets(ctx context.Context) ([]WalletData, error) {
 	stores, err := loadStores(ctx)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	accountDatas := make(map[string][]string)
+	walletData := make([]WalletData, len(stores))
+
 	for _, store := range stores {
 		fmt.Println(store.Location)
 		for _, wallet := range store.Wallets {
@@ -67,9 +76,18 @@ func combineWallets(ctx context.Context) (string, error) {
 					fmt.Println("Error")
 				}
 				bs, _ := json.Marshal(key)
-				println("Account:", account.Name(), ", Key:", string(bs))
+				accountDatas[account.Name()] = append(
+					accountDatas[account.Name()],
+					string(bs),
+				)
 			}
+			walletData = append(walletData,
+				WalletData{
+					Name:     wallet.Name(),
+					Accounts: accountDatas,
+				},
+			)
 		}
 	}
-	return "hello", nil
+	return walletData, nil
 }

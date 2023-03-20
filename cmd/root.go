@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
-  "strings"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -12,17 +12,14 @@ import (
 )
 
 var (
-	cfgFile     string
+	cfgFile string
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "dkc",
 	Short: "Dirk Key Converter",
 	Long:  `Allow to split and combine keystores and distributed wallets in Dirk`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Hello")
-    fmt.Printf("Viper: %+v\n", viper.GetStringMap("peers"))
-	},
+	//Run: func(cmd *cobra.Command, args []string) {},
 }
 
 func Execute() {
@@ -43,10 +40,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "config file")
 
 	rootCmd.PersistentFlags().String("keystore-dir", "./keystores", "Directory with keystores")
-  viper.BindPFlag("keystoreDir", rootCmd.PersistentFlags().Lookup("keystore-dir"))
+	viper.BindPFlag("keystoreDir", rootCmd.PersistentFlags().Lookup("keystore-dir"))
 
 	rootCmd.PersistentFlags().String("wallet-dir", "./wallets", "Directory with dirk wallets")
-  viper.BindPFlag("walletDir", rootCmd.PersistentFlags().Lookup("wallet-dir"))
+	viper.BindPFlag("walletDir", rootCmd.PersistentFlags().Lookup("wallet-dir"))
 }
 func initConfig() {
 	viper.SetConfigFile(cfgFile)
