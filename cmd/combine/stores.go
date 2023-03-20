@@ -21,12 +21,6 @@ type DirkStore struct {
 	Wallets  []e2wtypes.Wallet
 }
 
-type WalletData struct {
-	Name     string
-	Accounts Accounts
-	IDs      []uint64
-}
-
 type Peers = map[uint64]string
 
 type Accounts = map[string][][]byte
@@ -65,7 +59,7 @@ func loadStores(ctx context.Context) ([]DirkStore, error) {
 	return stores, nil
 }
 
-func combineWallets(ctx context.Context) ([]WalletData, error) {
+func combineWallets(ctx context.Context) (Accounts, error) {
 	stores, err := loadStores(ctx)
 	if err != nil {
 		fmt.Println(err)
@@ -79,7 +73,6 @@ func combineWallets(ctx context.Context) ([]WalletData, error) {
 	}
 
 	accountDatas := make(Accounts)
-	walletData := make([]WalletData, 0)
 
 	for _, store := range stores {
 		for id := range peers {
@@ -105,21 +98,12 @@ func combineWallets(ctx context.Context) ([]WalletData, error) {
 					bs,
 				)
 			}
-			walletData = append(walletData,
-				WalletData{
-					Name:     wallet.Name(),
-					Accounts: accountDatas,
-					IDs:      participantsIDs,
-				},
-			)
 		}
 	}
 
-	for _, wallet := range walletData {
-		for _, account := range wallet.Accounts {
-			_, _ = bls.Recover(ctx, account, wallet.IDs)
-		}
+	for _, account := range accountDatas {
+		_, _ = bls.Recover(ctx, account, participantsIDs)
 	}
 
-	return walletData, nil
+	return accountDatas, nil
 }
