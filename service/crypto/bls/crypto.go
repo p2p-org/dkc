@@ -19,9 +19,6 @@ func newBlsID(id uint64) *bls.ID {
 }
 
 func Recover(ctx context.Context, keys [][]byte, ids []uint64) (string, error) {
-	bls.Init(bls.BLS12_381)
-	bls.SetETHmode(bls.EthModeDraft07)
-
 	var subIDs []bls.ID
 	for _, id := range ids {
 		subIDs = append(
