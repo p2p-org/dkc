@@ -63,7 +63,7 @@ func combineWallets(ctx context.Context) ([]WalletData, error) {
 		fmt.Println(err)
 	}
 
-	accountData := make(map[string][]string)
+	accountDatas := make(map[string][]string)
 	walletData := make([]WalletData, len(stores))
 
 	for _, store := range stores {
@@ -76,15 +76,15 @@ func combineWallets(ctx context.Context) ([]WalletData, error) {
 					fmt.Println("Error")
 				}
 				bs, _ := json.Marshal(key)
-				accountData[account.Name()] = append(
-					accountData[account.Name()],
+				accountDatas[account.Name()] = append(
+					accountDatas[account.Name()],
 					string(bs),
 				)
 			}
 			walletData = append(walletData,
 				WalletData{
 					Name:     wallet.Name(),
-					Accounts: accountData,
+					Accounts: accountDatas,
 				},
 			)
 		}
