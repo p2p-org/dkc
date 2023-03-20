@@ -75,16 +75,13 @@ func combineWallets(ctx context.Context) (Accounts, error) {
 	accountDatas := make(Accounts)
 
 	for _, store := range stores {
+		fmt.Println(store.Location)
 		for id := range peers {
 			peerExists, _ := regexp.MatchString(filepath.Base(store.Location)+":.*", peers[id])
 			if peerExists {
 				participantsIDs = append(participantsIDs, id)
 			}
 		}
-	}
-
-	for _, store := range stores {
-		fmt.Println(store.Location)
 		for _, wallet := range store.Wallets {
 			fmt.Println(wallet.Name())
 			for account := range wallet.Accounts(ctx) {
