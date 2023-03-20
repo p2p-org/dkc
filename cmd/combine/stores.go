@@ -18,7 +18,7 @@ type DirkStore struct {
 	Wallets  []e2wtypes.Wallet
 }
 
-type WalletsData struct {
+type WalletData struct {
 	Name     string
 	Accounts map[string][]string
 }
@@ -57,14 +57,14 @@ func loadStores(ctx context.Context) ([]DirkStore, error) {
 	return stores, nil
 }
 
-func combineWallets(ctx context.Context) ([]WalletsData, error) {
+func combineWallets(ctx context.Context) ([]WalletData, error) {
 	stores, err := loadStores(ctx)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	accountsData := make(map[string][]string)
-	walletsData := make([]WalletsData, len(stores))
+	accountData := make(map[string][]string)
+	walletData := make([]WalletData, len(stores))
 
 	for _, store := range stores {
 		fmt.Println(store.Location)
@@ -76,18 +76,18 @@ func combineWallets(ctx context.Context) ([]WalletsData, error) {
 					fmt.Println("Error")
 				}
 				bs, _ := json.Marshal(key)
-				accountsData[account.Name()] = append(
-					accountsData[account.Name()],
+				accountData[account.Name()] = append(
+					accountData[account.Name()],
 					string(bs),
 				)
 			}
-			walletsData = append(walletsData,
-				WalletsData{
+			walletData = append(walletData,
+				WalletData{
 					Name:     wallet.Name(),
-					Accounts: accountsData,
+					Accounts: accountData,
 				},
 			)
 		}
 	}
-	return walletsData, nil
+	return walletData, nil
 }
