@@ -2,12 +2,13 @@ package combine
 
 import (
 	"context"
+	"fmt"
 )
 
 func Run() {
 	ctx := context.Background()
-  combineWallets(ctx)
-
+	t, _ := combineWallets(ctx)
+	fmt.Println(t)
 	//CombineStores(ctx)
 	//SaveWallets(ctx)
 }
