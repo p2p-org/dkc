@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/selfuryon/dkc/cmd/combine"
+	"github.com/p2p-org/dkc/cmd/combine"
 	"github.com/spf13/cobra"
 )
 
