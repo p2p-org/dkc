@@ -1,4 +1,4 @@
-module github.com/p2p/dkc
+module github.com/p2p-org/dkc
 
 go 1.19
 
