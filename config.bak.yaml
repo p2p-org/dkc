@@ -1,5 +1,4 @@
 passphrases: ./wallets/passphrases.txt
-master-key: ./test.key
 signing-threshold: 2
 peers:
   10: old1:9091

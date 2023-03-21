@@ -2,20 +2,17 @@ package bls
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 
 	"github.com/herumi/bls-eth-go-binary/bls"
 )
 
-func newBlsID(id uint64) *bls.ID {
-	var res bls.ID
-	buf := [8]byte{}
-	binary.LittleEndian.PutUint64(buf[:], id)
-	if err := res.SetLittleEndian(buf[:]); err != nil {
-		panic(err)
-	}
-	return &res
+func Check(ctx context.Context) {
+	//
+}
+
+func Split(ctx context.Context, key []byte, peersIDs []uint64, threshold int) ([]bls.SecretKey, error) {
+	return nil, nil
 }
 
 func Recover(ctx context.Context, keys [][]byte, ids []uint64) (string, error) {
@@ -38,7 +35,9 @@ func Recover(ctx context.Context, keys [][]byte, ids []uint64) (string, error) {
 
 	var rk bls.SecretKey
 	if err := rk.Recover(subSKs, subIDs); err != nil {
+		panic(err)
 	}
 	fmt.Printf("Recovered key=%v\n", rk.SerializeToHexStr())
+	fmt.Printf("Recovered Pkey=%v\n", rk.GetPublicKey().SerializeToHexStr())
 	return "", nil
 }

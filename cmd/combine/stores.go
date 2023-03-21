@@ -2,7 +2,6 @@ package combine
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -87,10 +86,10 @@ func combineWallets(ctx context.Context) (Accounts, error) {
 				if err != nil {
 					fmt.Println("Error")
 				}
-				bs, _ := json.Marshal(key)
+
 				accountDatas[account.Name()] = append(
 					accountDatas[account.Name()],
-					bs,
+					key,
 				)
 			}
 		}

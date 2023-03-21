@@ -61,6 +61,7 @@ func getAccountKey(ctx context.Context, account e2wtypes.Account) (Key, error) {
 	if err != nil {
 		fmt.Println(err, "failed to obtain private key")
 	}
+
 	return key.Marshal(), nil
 }
 
