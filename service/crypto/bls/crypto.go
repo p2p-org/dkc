@@ -11,8 +11,12 @@ func Check(ctx context.Context) {
 	//
 }
 
-func Split(ctx context.Context, key []byte, peersIDs []uint64, threshold int) ([]bls.SecretKey, error) {
-	return nil, nil
+func Split(ctx context.Context, key []byte, threshold uint32) (
+	masterSKs [][]byte,
+	masterPKs [][]byte,
+) {
+	masterSKs, masterPKs = setupMasterKeys(key, threshold)
+	return
 }
 
 func Recover(ctx context.Context, keys [][]byte, ids []uint64) (string, error) {

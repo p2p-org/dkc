@@ -6,8 +6,7 @@ import (
 
 func Run() {
 	ctx := context.Background()
-	println(ctx)
-	//combineWallets(ctx)
+	CreateWallets(ctx)
 	//CombineStores(ctx)
 	//SaveWallets(ctx)
 }
