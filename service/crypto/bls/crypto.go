@@ -2,7 +2,6 @@ package bls
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/herumi/bls-eth-go-binary/bls"
 )
@@ -19,7 +18,7 @@ func Split(ctx context.Context, key []byte, threshold uint32) (
 	return
 }
 
-func Recover(ctx context.Context, keys [][]byte, ids []uint64) (string, error) {
+func Recover(ctx context.Context, keys [][]byte, ids []uint64) ([]byte, error) {
 	var subIDs []bls.ID
 	for _, id := range ids {
 		subIDs = append(
@@ -41,7 +40,6 @@ func Recover(ctx context.Context, keys [][]byte, ids []uint64) (string, error) {
 	if err := rk.Recover(subSKs, subIDs); err != nil {
 		panic(err)
 	}
-	fmt.Printf("Recovered key=%v\n", rk.SerializeToHexStr())
-	fmt.Printf("Recovered Pkey=%v\n", rk.GetPublicKey().SerializeToHexStr())
-	return "", nil
+
+	return rk.Serialize(), nil
 }

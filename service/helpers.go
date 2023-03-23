@@ -18,14 +18,3 @@ func GetAccountsPasswords() [][]byte {
 	accountsPasswords := bytes.Split(content, []byte{'\n'})
 	return accountsPasswords
 }
-
-func GetMasterKey() []byte {
-	masterKeyPath := viper.GetString("master-key")
-
-	masterKey, err := os.ReadFile(masterKeyPath)
-	if err != nil {
-		panic(err)
-	}
-
-	return masterKey
-}

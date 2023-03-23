@@ -4,14 +4,37 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
+func CreateNDAccount(
+	key []byte,
+	name string,
+	passphrase []byte,
+	wallet types.Wallet,
+) {
+	err := wallet.(types.WalletLocker).Unlock(context.Background(), nil)
+	if err != nil {
+		panic(err)
+	}
+	defer wallet.(types.WalletLocker).Lock(context.Background())
+
+	account, err := wallet.(types.WalletAccountImporter).ImportAccount(context.Background(),
+		name,
+		key,
+		passphrase,
+	)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(account)
+}
+
 func CreateAccounts(
 	wallet types.Wallet,
 	accountsPassword []byte,
+	name string,
 	masterPKs [][]byte,
 	masterSKs [][]byte,
 	threshold uint32,
@@ -31,7 +54,7 @@ func CreateAccounts(
 	participants := peers
 
 	account, err := wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(context.Background(),
-		uuid.New().String(),
+		name,
 		privateKey,
 		signingThreshold,
 		verificationVector,

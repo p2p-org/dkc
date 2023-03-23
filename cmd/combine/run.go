@@ -49,12 +49,17 @@ func Run() {
 			}
 		}
 	}
-	for _, account := range accountDatas {
-		_, _ = bls.Recover(ctx, account, participantsIDs)
+
+	store := service.CreateStore("./restoredwallets")
+	wallet := service.CreateWallet(store, "non-deterministic")
+	for accountName, account := range accountDatas {
+		key, err := bls.Recover(ctx, account, participantsIDs)
+		if err != nil {
+			panic(err)
+		}
+
+		service.CreateNDAccount(key, accountName, passphrases[0], wallet)
 	}
 
 	return
-	//return accountDatas, nil
-	//CombineStores(ctx)
-	//SaveWallets(ctx)
 }
