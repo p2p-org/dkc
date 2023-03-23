@@ -2,11 +2,59 @@ package combine
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
+	"regexp"
+
+	"github.com/p2p-org/dkc/service"
+	"github.com/p2p-org/dkc/service/crypto/bls"
+	"github.com/spf13/viper"
 )
 
 func Run() {
 	ctx := context.Background()
-	combineWallets(ctx)
+	walletDir := viper.GetString("walletDir")
+	var peers service.Peers
+	passphrases := service.GetAccountsPasswords()
+	participantsIDs := make([]uint64, 0)
+	accountDatas := make(service.Accounts)
+	stores, err := service.LoadStores(ctx, walletDir, passphrases)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = viper.UnmarshalKey("peers", &peers)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, store := range stores {
+		for id := range peers {
+			peerExists, _ := regexp.MatchString(filepath.Base(store.Location)+":.*", peers[id])
+			if peerExists {
+				participantsIDs = append(participantsIDs, id)
+			}
+		}
+		for _, wallet := range store.Wallets {
+			for account := range wallet.Accounts(ctx) {
+				key, err := service.GetAccountKey(ctx, account, passphrases)
+				if err != nil {
+					fmt.Println("Error")
+				}
+
+				accountDatas[account.Name()] = append(
+					accountDatas[account.Name()],
+					key,
+				)
+			}
+		}
+	}
+	for _, account := range accountDatas {
+		_, _ = bls.Recover(ctx, account, participantsIDs)
+	}
+
+	return
+	//return accountDatas, nil
 	//CombineStores(ctx)
 	//SaveWallets(ctx)
 }

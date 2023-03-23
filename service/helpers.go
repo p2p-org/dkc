@@ -1,25 +1,25 @@
-package split
+package service
 
 import (
+	"bytes"
 	"os"
 
 	"github.com/spf13/viper"
 )
 
-type Peers map[uint64]string
-
-func getAccountsPassword() []byte {
+func GetAccountsPasswords() [][]byte {
 	accountsPasswordPath := viper.GetString("passphrases")
 
-	accountsPassword, err := os.ReadFile(accountsPasswordPath)
+	content, err := os.ReadFile(accountsPasswordPath)
 	if err != nil {
 		panic(err)
 	}
 
-	return accountsPassword
+	accountsPasswords := bytes.Split(content, []byte{'\n'})
+	return accountsPasswords
 }
 
-func getMasterKey() []byte {
+func GetMasterKey() []byte {
 	masterKeyPath := viper.GetString("master-key")
 
 	masterKey, err := os.ReadFile(masterKeyPath)

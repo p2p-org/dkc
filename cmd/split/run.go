@@ -4,18 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/p2p-org/dkc/service/"
+	"github.com/p2p-org/dkc/service"
 	"github.com/p2p-org/dkc/service/crypto/bls"
 	"github.com/spf13/viper"
 )
 
 func Run() {
 	ctx := context.Background()
-	service.CreateWallets(ctx)
 	threshold := viper.GetUint32("signing-threshold")
-	masterKey := getMasterKey()
-	accountsPassword := getAccountsPassword()
-	var peers Peers
+	masterKey := service.GetMasterKey()
+	accountsPasswords := service.GetAccountsPasswords()
+	var peers service.Peers
 	err := viper.UnmarshalKey("peers", &peers)
 	if err != nil {
 		fmt.Println(err)
@@ -23,12 +22,12 @@ func Run() {
 
 	masterSKs, masterPKs := bls.Split(ctx, masterKey, threshold)
 
-	store := service.createStore("./newwallets")
-	wallet := service.createWallet(store)
+	store := service.CreateStore("./newwallets")
+	wallet := service.CreateWallet(store)
 
-	service.createAccounts(
+	service.CreateAccounts(
 		wallet,
-		accountsPassword,
+		accountsPasswords[0],
 		masterPKs,
 		masterSKs,
 		threshold,

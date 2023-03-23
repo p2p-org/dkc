@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
-func createAccounts(
+func CreateAccounts(
 	wallet types.Wallet,
 	accountsPassword []byte,
 	masterPKs [][]byte,
@@ -39,7 +41,40 @@ func createAccounts(
 		panic(err)
 	}
 
-	print(account)
+	fmt.Println(account)
+
 	return
 
+}
+
+func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]byte) ([]byte, error) {
+	privateKeyProvider, isPrivateKeyProvider := account.(types.AccountPrivateKeyProvider)
+	if !isPrivateKeyProvider {
+		fmt.Println("account does not provide its private key")
+	}
+
+	if locker, isLocker := account.(types.AccountLocker); isLocker {
+		unlocked, err := locker.IsUnlocked(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to find out if account is locked")
+		}
+		if !unlocked {
+			for _, passphrase := range passphrases {
+				err = locker.Unlock(ctx, passphrase)
+				if err == nil {
+					unlocked = true
+					break
+				}
+			}
+			if !unlocked {
+				return nil, errors.New("failed to unlock account")
+			}
+		}
+	}
+	key, err := privateKeyProvider.PrivateKey(ctx)
+	if err != nil {
+		fmt.Println(err, "failed to obtain private key")
+	}
+
+	return key.Marshal(), nil
 }
