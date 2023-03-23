@@ -1,4 +1,4 @@
-package split
+package service
 
 import (
 	filesystem "github.com/wealdtech/go-eth2-wallet-store-filesystem"
