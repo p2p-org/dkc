@@ -33,7 +33,7 @@ func LoadStores(ctx context.Context, walletDir string, passphrases [][]byte) ([]
 	}
 	for _, f := range dirs {
 		if f.IsDir() {
-			store, err := loadStore(ctx, walletDir+"/"+f.Name(), passphrases)
+			store, err := LoadStore(ctx, walletDir+"/"+f.Name(), passphrases)
 			if err != nil {
 				return nil, errors.Wrap(err, "can't load store")
 			}
@@ -43,7 +43,7 @@ func LoadStores(ctx context.Context, walletDir string, passphrases [][]byte) ([]
 	return stores, nil
 }
 
-func loadStore(ctx context.Context, location string, passphrases [][]byte) (*DirkStore, error) {
+func LoadStore(ctx context.Context, location string, passphrases [][]byte) (*DirkStore, error) {
 	dirkStore := DirkStore{}
 	dirkStore.Location = location
 	var wallets []types.Wallet

@@ -19,7 +19,7 @@ func Run() {
 		fmt.Println(err)
 	}
 
-	stores, err := service.LoadStores(ctx, "./restoredwallets", accountsPasswords)
+	s, err := service.LoadStore(ctx, "./restoredwallets", accountsPasswords)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -27,25 +27,23 @@ func Run() {
 	store := service.CreateStore("./newwallets")
 	wallet := service.CreateWallet(store, "distributed")
 
-	for _, s := range stores {
-		for _, wallet := range s.Wallets {
-			for account := range wallet.Accounts(ctx) {
-				key, err := service.GetAccountKey(ctx, account, accountsPasswords)
-				if err != nil {
-					fmt.Println("Error")
-				}
-
-				masterSKs, masterPKs := bls.Split(ctx, key, threshold)
-				service.CreateAccounts(
-					wallet,
-					accountsPasswords[0],
-					account.Name(),
-					masterPKs,
-					masterSKs,
-					threshold,
-					peers,
-				)
+	for _, w := range s.Wallets {
+		for account := range w.Accounts(ctx) {
+			key, err := service.GetAccountKey(ctx, account, accountsPasswords)
+			if err != nil {
+				fmt.Println("Error")
 			}
+
+			masterSKs, masterPKs := bls.Split(ctx, key, threshold)
+			service.CreateAccounts(
+				wallet,
+				accountsPasswords[0],
+				account.Name(),
+				masterPKs,
+				masterSKs,
+				threshold,
+				peers,
+			)
 		}
 	}
 
