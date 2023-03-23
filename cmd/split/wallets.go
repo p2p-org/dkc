@@ -33,7 +33,6 @@ func getMasterKey() []byte {
 		panic(err)
 	}
 
-	//masterKey := []byte("0c481503e95a9cc63d6651367c227dab9b99c3d08c95907a3798e2bc7f847f6d")[0:32]
 	return masterKey
 }
 
