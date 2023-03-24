@@ -37,9 +37,11 @@ func Sign(ctx context.Context, accounts []service.Account) []byte {
 			*newBlsID(account.ID),
 		)
 
+		var peerSig bls.Sign
+		peerSig.Deserialize(account.Signature)
 		subSignatures = append(
 			subSignatures,
-			*bls.HashAndMapToSignature(account.Signature),
+			peerSig,
 		)
 	}
 

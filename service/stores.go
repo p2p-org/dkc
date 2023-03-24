@@ -19,8 +19,8 @@ type Peers = map[uint64]string
 
 type Account struct {
 	ID        uint64
-	Signature []byte
 	Key       []byte
+	Signature []byte
 }
 
 func CreateStore(path string) (store types.Store) {

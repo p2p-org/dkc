@@ -77,6 +77,10 @@ func AccountSign(ctx context.Context, acc types.Account, signerData []byte, pass
 		panic(err)
 	}
 
+	if !signedData.Verify(signerData, acc.PublicKey()) {
+		panic("rap")
+	}
+
 	return signedData.Marshal()
 }
 

@@ -50,8 +50,6 @@ func Run() {
 			)
 
 			finalSignature := service.AccountSign(ctx, finalAccount, []byte(signString), accountsPasswords)
-			fmt.Println(initialSignature)
-			fmt.Println(finalSignature)
 
 			if !bytes.Equal(finalSignature, initialSignature) {
 				panic("test")
