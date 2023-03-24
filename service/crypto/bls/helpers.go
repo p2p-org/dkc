@@ -42,18 +42,18 @@ func newBlsID(id uint64) *bls.ID {
 //	return
 //}
 
-func setupMasterKeys(masterSK []byte, threshold uint32) (masterSKs [][]byte, masterPKs [][]byte) {
-	var sk bls.SecretKey
-	sk.Deserialize(masterSK)
-	masterPKs = append(masterPKs, sk.GetPublicKey().Serialize())
-	masterSKs = append(masterSKs, sk.Serialize())
-
-	for i := 1; i < int(threshold); i++ {
-		var sk bls.SecretKey
-		sk.SetByCSPRNG() // Shouldn't be a zero (all keys will be equal in that case)
-		masterSKs = append(masterSKs, sk.Serialize())
-		masterPKs = append(masterPKs, sk.GetPublicKey().Serialize())
-	}
-
-	return
-}
+//func setupMasterKeys(masterSK []byte, threshold uint32) (masterSKs [][]byte, masterPKs [][]byte) {
+//	var sk bls.SecretKey
+//	sk.Deserialize(masterSK)
+//	masterPKs = append(masterPKs, sk.GetPublicKey().Serialize())
+//	masterSKs = append(masterSKs, sk.Serialize())
+//
+//	for i := 1; i < int(threshold); i++ {
+//		var sk bls.SecretKey
+//		sk.SetByCSPRNG() // Shouldn't be a zero (all keys will be equal in that case)
+//		masterSKs = append(masterSKs, sk.Serialize())
+//		masterPKs = append(masterPKs, sk.GetPublicKey().Serialize())
+//	}
+//
+//	return
+//}

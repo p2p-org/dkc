@@ -17,7 +17,11 @@ type DirkStore struct {
 
 type Peers = map[uint64]string
 
-type Accounts = map[string][][]byte
+type Account struct {
+	ID        uint64
+	Signature []byte
+	Key       []byte
+}
 
 func CreateStore(path string) (store types.Store) {
 	store = filesystem.New(filesystem.WithLocation(path))

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
@@ -13,14 +12,14 @@ func CreateNDAccount(
 	name string,
 	passphrase []byte,
 	wallet types.Wallet,
-) {
+) (account types.Account) {
 	err := wallet.(types.WalletLocker).Unlock(context.Background(), nil)
 	if err != nil {
 		panic(err)
 	}
 	defer wallet.(types.WalletLocker).Lock(context.Background())
 
-	account, err := wallet.(types.WalletAccountImporter).ImportAccount(context.Background(),
+	account, err = wallet.(types.WalletAccountImporter).ImportAccount(context.Background(),
 		name,
 		key,
 		passphrase,
@@ -28,10 +27,11 @@ func CreateNDAccount(
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(account)
+
+	return account
 }
 
-func CreateAccounts(
+func CreateAccount(
 	wallet types.Wallet,
 	accountsPassword []byte,
 	name string,
@@ -39,7 +39,7 @@ func CreateAccounts(
 	masterSKs [][]byte,
 	threshold uint32,
 	peers map[uint64]string,
-) {
+) (account types.Account) {
 	err := wallet.(types.WalletLocker).Unlock(context.Background(), nil)
 	if err != nil {
 		panic(err)
@@ -53,7 +53,7 @@ func CreateAccounts(
 	verificationVector := masterPKs
 	participants := peers
 
-	account, err := wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(context.Background(),
+	account, err = wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(context.Background(),
 		name,
 		privateKey,
 		signingThreshold,
@@ -64,10 +64,20 @@ func CreateAccounts(
 		panic(err)
 	}
 
-	fmt.Println(account)
-
 	return
 
+}
+
+func AccountSign(ctx context.Context, acc types.Account, signerData []byte, passphrases [][]byte) []byte {
+	account := unlockAccount(ctx, acc, passphrases)
+	accountSigner := account.(types.AccountSigner)
+
+	signedData, err := accountSigner.Sign(ctx, signerData)
+	if err != nil {
+		panic(err)
+	}
+
+	return signedData.Marshal()
 }
 
 func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]byte) ([]byte, error) {
@@ -76,10 +86,22 @@ func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]b
 		fmt.Println("account does not provide its private key")
 	}
 
+	unlockAccount(ctx, account, passphrases)
+
+	key, err := privateKeyProvider.PrivateKey(ctx)
+	if err != nil {
+		fmt.Println(err, "failed to obtain private key")
+	}
+
+	return key.Marshal(), nil
+}
+
+func unlockAccount(ctx context.Context, acc types.Account, passphrases [][]byte) (account types.Account) {
+	account = acc
 	if locker, isLocker := account.(types.AccountLocker); isLocker {
 		unlocked, err := locker.IsUnlocked(ctx)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to find out if account is locked")
+			panic(err)
 		}
 		if !unlocked {
 			for _, passphrase := range passphrases {
@@ -90,14 +112,10 @@ func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]b
 				}
 			}
 			if !unlocked {
-				return nil, errors.New("failed to unlock account")
+				panic(err)
 			}
 		}
 	}
-	key, err := privateKeyProvider.PrivateKey(ctx)
-	if err != nil {
-		fmt.Println(err, "failed to obtain private key")
-	}
 
-	return key.Marshal(), nil
+	return
 }

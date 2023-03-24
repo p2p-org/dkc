@@ -1,6 +1,7 @@
 package split
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -11,6 +12,7 @@ import (
 
 func Run() {
 	ctx := context.Background()
+	signString := "testingStringABC"
 	threshold := viper.GetUint32("signing-threshold")
 	accountsPasswords := service.GetAccountsPasswords()
 	var peers service.Peers
@@ -35,7 +37,9 @@ func Run() {
 			}
 
 			masterSKs, masterPKs := bls.Split(ctx, key, threshold)
-			service.CreateAccounts(
+			initialSignature := service.AccountSign(ctx, account, []byte(signString), accountsPasswords)
+
+			finalAccount := service.CreateAccount(
 				wallet,
 				accountsPasswords[0],
 				account.Name(),
@@ -44,8 +48,16 @@ func Run() {
 				threshold,
 				peers,
 			)
+
+			finalSignature := service.AccountSign(ctx, finalAccount, []byte(signString), accountsPasswords)
+			fmt.Println(initialSignature)
+			fmt.Println(finalSignature)
+
+			if !bytes.Equal(finalSignature, initialSignature) {
+				panic("test")
+			}
 		}
 	}
 
-	fmt.Println(wallet)
+	return
 }
