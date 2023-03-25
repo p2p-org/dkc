@@ -36,7 +36,7 @@ func CreateAccount(
 	accountsPassword []byte,
 	name string,
 	masterPKs [][]byte,
-	masterSKs [][]byte,
+	masterSK []byte,
 	threshold uint32,
 	peers map[uint64]string,
 ) (account types.Account) {
@@ -48,14 +48,13 @@ func CreateAccount(
 	// Always immediately defer locking the wallet to ensure it does not remain unlocked outside of the function.
 	defer wallet.(types.WalletLocker).Lock(context.Background())
 
-	privateKey := masterSKs[0]
 	signingThreshold := threshold
 	verificationVector := masterPKs
 	participants := peers
 
 	account, err = wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(context.Background(),
 		name,
-		privateKey,
+		masterSK,
 		signingThreshold,
 		verificationVector,
 		participants,

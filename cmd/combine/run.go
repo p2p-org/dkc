@@ -76,7 +76,6 @@ func Run() {
 		if !bytes.Equal(finalSignature, initialSignature) {
 			panic("test")
 		}
-		fmt.Println(finalAccount)
 	}
 
 	return
