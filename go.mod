@@ -1,8 +1,10 @@
-module github.com/selfuryon/dkc
+module github.com/p2p-org/dkc
 
 go 1.19
 
 require (
+	github.com/google/uuid v1.3.0
+	github.com/herumi/bls-eth-go-binary v1.28.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.6.1
@@ -21,9 +23,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.177 // indirect
 	github.com/ferranbt/fastssz v0.1.2 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/herumi/bls-eth-go-binary v1.28.1 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
