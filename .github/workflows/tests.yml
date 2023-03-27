@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version-file: './go.mod'
-      - run: go build -o ./.github/basic/dkc
+      - run: go build -o ./.github/basics/dkc
 
       - name: "Install ethdo"
         run: |
@@ -25,7 +25,7 @@ jobs:
       - name: "Test combine and split logic"
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          cd ./.github/basic/
+          cd ./.github/basics/
 
           accounts_list="1 2 3 4"
           original_wallet_name="DW"
