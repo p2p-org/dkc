@@ -35,8 +35,8 @@ jobs:
           restored_wallet=$(ethdo wallet --base-dir ./restoredwallets/ list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
           for i in $(echo $accounts_list); do
-            local _original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "DW/$i" | grep -i "Composite public key:" | awk '{print $NF}')
-            local _restored_key=$(ethdo account --base-dir ./restoredwallets info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
+            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "DW/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            restored_key=$(ethdo account --base-dir ./restoredwallets info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
 
             if [[ -z "$_original_key" ]]; then
               echo "ERROR: Original key is empty"
@@ -57,8 +57,8 @@ jobs:
           splited_wallet=$(ethdo wallet --base-dir ./newwallets/old1 list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
           for i in $(echo $accounts_list); do
-            local _original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "DW/$i" | grep -i "Composite public key:" | awk '{print $NF}')
-            local _splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "DW/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
 
             if [[ -z "$_original_key" ]]; then
               echo "ERROR: Original key is empty"
