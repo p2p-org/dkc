@@ -38,15 +38,15 @@ jobs:
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "DW/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             restored_key=$(ethdo account --base-dir ./restoredwallets info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
 
-            if [[ -z "$_original_key" ]]; then
+            if [[ -z "$original_key" ]]; then
               echo "ERROR: Original key is empty"
               exit 1
             fi
 
-            if [[ "$_original_key" != "$_restored_key" ]]; then
+            if [[ "$original_key" != "$restored_key" ]]; then
               echo "ERROR: Public Key for Account: $i is incorrect"
-              echo "Original: $_original_key"
-              echo "Restored: $_restored_key"
+              echo "Original: $original_key"
+              echo "Restored: $restored_key"
               exit 1
             fi
 
@@ -60,15 +60,15 @@ jobs:
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "DW/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
 
-            if [[ -z "$_original_key" ]]; then
+            if [[ -z "$original_key" ]]; then
               echo "ERROR: Original key is empty"
               exit 1
             fi
 
-            if [[ "$_original_key" != "$_splited_key" ]]; then
+            if [[ "$original_key" != "$splited_key" ]]; then
               echo "ERROR: Public Key for Account: $i is incorrect"
-              echo "Original: $_original_key"
-              echo "Restored: $_splited_key"
+              echo "Original: $original_key"
+              echo "Restored: $splited_key"
               exit 1
             fi
 
