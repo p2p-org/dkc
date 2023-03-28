@@ -63,6 +63,7 @@ jobs:
           #Compare Composite Pubkey from original accounts to newly created accounts
           for i in $(echo $accounts_list); do
           echo "Cheking keys after split"
+            echo "Account: $i"
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             echo -e "${green}OK${nc}: $original_key $splited_key"
