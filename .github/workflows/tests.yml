@@ -27,7 +27,7 @@ jobs:
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
 
-          accounts_list=$(/Users/voro/go/bin/ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name")
+          accounts_list=$(ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name")
           #Combine
           echo "Runing combine"
           ./dkc combine
