@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version-file: './go.mod'
-      - run: go build -o ./.github/basics/dkc
+      - run: go build -o "$path"
 
       - name: "Install ethdo"
         run: |
@@ -82,6 +82,6 @@ jobs:
           done;
           echo "OK: Split checks"
           echo "OK: All checks passed"
-        env:
-          wallet_name: "DW"
-          path: "./.github/examples"
+    env:
+      wallet_name: "DW"
+      path: "./.github/examples"
