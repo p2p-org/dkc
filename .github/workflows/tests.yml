@@ -61,8 +61,8 @@ jobs:
           ./dkc split
           splited_wallet=$(ethdo wallet --base-dir ./newwallets/old1 list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
-          for i in $(echo $accounts_list); do
           echo -e "\nCheking keys after split"
+          for i in $(echo $accounts_list); do
             echo "Account: $i"
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
@@ -81,7 +81,7 @@ jobs:
             fi
 
           done;
-          echo -e "${green}OK${nc}: Split checks"
+          echo -e "\n${green}OK${nc}: Split checks"
           echo -e "${green}OK${nc}: All checks passed"
     env:
       wallet_name: "DW"
