@@ -29,12 +29,12 @@ jobs:
 
           accounts_list=$(ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name")
           #Combine
-          echo "Runing combine"
+          echo -e "\nRuning combine"
           ./dkc combine
           #Get combined wallet
           restored_wallet=$(ethdo wallet --base-dir ./restoredwallets/ list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
-          echo "Cheking keys after combine"
+          echo -e "\nCheking keys after combine"
           for i in $(echo $accounts_list); do
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             restored_key=$(ethdo account --base-dir ./restoredwallets info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
@@ -57,12 +57,12 @@ jobs:
           echo -e "${green}OK${nc}: Combine checks"
 
           #Split
-          echo "Running split"
+          echo -e "\nRunning split"
           ./dkc split
           splited_wallet=$(ethdo wallet --base-dir ./newwallets/old1 list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
           for i in $(echo $accounts_list); do
-          echo "Cheking keys after split"
+          echo -e "\nCheking keys after split"
             echo "Account: $i"
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
