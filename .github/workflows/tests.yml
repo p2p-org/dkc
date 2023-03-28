@@ -81,8 +81,8 @@ jobs:
             fi
 
           done;
-          echo -e "\n${green}OK${nc}: Split checks"
-          echo -e "${green}OK${nc}: All checks passed"
+          echo -e "${green}OK${nc}: Split checks"
+          echo -e "\n${green}OK${nc}: All checks passed"
     env:
       wallet_name: "DW"
       path: "./.github/examples"
