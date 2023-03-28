@@ -12,13 +12,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+type AccountExtends struct {
+	PubKey           []byte
+	CompositePubKeys [][]byte
+	Accounts         []service.Account
+}
+
 func Run() {
 	ctx := context.Background()
 	signString := "testingStringABC"
 	walletDir := viper.GetString("walletDir")
 	var peers service.Peers
 	passphrases := service.GetAccountsPasswords()
-	accountDatas := make(map[string][]service.Account)
+	accountDatas := make(map[string]AccountExtends)
 	stores, err := service.LoadStores(ctx, walletDir, passphrases)
 	if err != nil {
 		fmt.Println(err)
@@ -44,15 +50,21 @@ func Run() {
 						}
 
 						initialSignature := service.AccountSign(ctx, account, []byte(signString), passphrases)
+						compositePubKey, err := service.GetAccountCompositePubkey(account)
+						if err != nil {
+							panic(err)
+						}
 
-						accountDatas[account.Name()] = append(
-							accountDatas[account.Name()],
-							service.Account{
-								Key:       key,
-								Signature: initialSignature,
-								ID:        participantID,
-							},
-						)
+						accountDatas[account.Name()] = AccountExtends{
+							Accounts: append(accountDatas[account.Name()].Accounts,
+								service.Account{
+									Key:       key,
+									Signature: initialSignature,
+									ID:        participantID,
+								},
+							),
+							CompositePubKeys: append(accountDatas[account.Name()].CompositePubKeys, compositePubKey),
+						}
 					}
 				}
 			}
@@ -62,12 +74,12 @@ func Run() {
 	store := service.CreateStore("./restoredwallets")
 	wallet := service.CreateWallet(store, "non-deterministic")
 	for accountName, account := range accountDatas {
-		key, err := bls.Recover(ctx, account)
+		key, err := bls.Recover(ctx, account.Accounts)
 		if err != nil {
 			panic(err)
 		}
 
-		initialSignature := bls.Sign(ctx, account)
+		initialSignature := bls.Sign(ctx, account.Accounts)
 
 		finalAccount := service.CreateNDAccount(key, accountName, passphrases[0], wallet)
 
@@ -75,6 +87,18 @@ func Run() {
 
 		if !bytes.Equal(finalSignature, initialSignature) {
 			panic("test")
+		}
+
+		pubkey, err := service.GetAccountPubkey(finalAccount)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, compositeKey := range account.CompositePubKeys {
+			if !bytes.Equal(compositeKey, pubkey) {
+				panic("test")
+			}
+
 		}
 	}
 

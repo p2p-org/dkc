@@ -14,6 +14,8 @@ import (
 
 type AccountExtends struct {
 	InitialSignature []byte
+	PubKey           []byte
+	CompositePubKeys [][]byte
 	Accounts         []service.Account
 	MasterPKs        [][]byte
 }
@@ -51,6 +53,10 @@ func Run() {
 			if err != nil {
 				fmt.Println("Error")
 			}
+			pubKey, err := service.GetAccountPubkey(account)
+			if err != nil {
+				panic(err)
+			}
 
 			initialSignature := service.AccountSign(ctx, account, []byte(signString), accountsPasswords)
 
@@ -60,6 +66,7 @@ func Run() {
 				MasterPKs:        masterPKs,
 				InitialSignature: initialSignature,
 				Accounts:         bls.SetupParticipants(masterSKs, masterPKs, peersIDs, len(peers)),
+				PubKey:           pubKey,
 			}
 		}
 	}
@@ -76,6 +83,11 @@ func Run() {
 				peers,
 			)
 			accountDatas[accountName].Accounts[i].Signature = service.AccountSign(ctx, finalAccount, []byte(signString), accountsPasswords)
+			compositePubKey, err := service.GetAccountCompositePubkey(finalAccount)
+			if err != nil {
+				panic(err)
+			}
+			account.CompositePubKeys = append(account.CompositePubKeys, compositePubKey)
 		}
 	}
 
@@ -83,6 +95,12 @@ func Run() {
 		finalSignature := bls.Sign(ctx, account.Accounts)
 		if !bytes.Equal(finalSignature, account.InitialSignature) {
 			panic("test")
+		}
+
+		for _, compositePubKey := range account.CompositePubKeys {
+			if !bytes.Equal(compositePubKey, account.PubKey) {
+				panic("test")
+			}
 		}
 	}
 

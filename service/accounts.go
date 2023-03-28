@@ -99,6 +99,21 @@ func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]b
 	return key.Marshal(), nil
 }
 
+func GetAccountCompositePubkey(account types.Account) ([]byte, error) {
+	compositePublicKeyProvider, isCompositePublicKeyProvider := account.(types.AccountCompositePublicKeyProvider)
+	if !isCompositePublicKeyProvider {
+		fmt.Println("account does not provide its private key")
+	}
+
+	pubKey := compositePublicKeyProvider.CompositePublicKey()
+
+	return pubKey.Marshal(), nil
+}
+
+func GetAccountPubkey(account types.Account) ([]byte, error) {
+	return account.PublicKey().Marshal(), nil
+}
+
 func unlockAccount(ctx context.Context, acc types.Account, passphrases [][]byte) (account types.Account) {
 	account = acc
 	if locker, isLocker := account.(types.AccountLocker); isLocker {
