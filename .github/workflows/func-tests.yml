@@ -1,14 +1,12 @@
-name: Tests for combine and split logic
+name: Functional Tests
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
-  logic-tests:
+  functional-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -20,7 +18,9 @@ jobs:
 
       - name: "Install ethdo"
         run: |
-          go install github.com/wealdtech/ethdo@latest
+          go install "github.com/wealdtech/ethdo@$ethdo_version"
+        env:
+          ethdo_version: "v1.28.5"
 
       - name: "Test combine and split logic"
         run: |
@@ -29,60 +29,48 @@ jobs:
 
           accounts_list=$(ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name")
           #Combine
-          echo -e "\nRuning combine"
           ./dkc combine
           #Get combined wallet
           restored_wallet=$(ethdo wallet --base-dir ./restoredwallets/ list |head -n 1)
+          echo -e "\n#  Original Keys"
+          for i in $(echo $accounts_list); do
+            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            if [[ -z "$original_key" ]]; then
+              echo -e "Account [$i]: ${red}Fail${nc} (len($original_key) == 0)"
+              exit 1
+            fi
+
+            echo -e "Account [$i]: $original_key"
+          done;
           #Compare Composite Pubkey from original accounts to newly created accounts
-          echo -e "\nCheking keys after combine"
+          echo -e "\n#  Combine Tests"
           for i in $(echo $accounts_list); do
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             restored_key=$(ethdo account --base-dir ./restoredwallets info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
-            echo "Account: $i"
-            echo -e "${green}OK${nc}: $original_key $restored_key"
-
-            if [[ -z "$original_key" ]]; then
-              echo -e "${red}ERROR${nc}: Original key is empty"
-              exit 1
-            fi
 
             if [[ "$original_key" != "$restored_key" ]]; then
-              echo -e "${red}ERROR${nc}: Public Key for Account: $i is incorrect"
-              echo "Original: $original_key"
-              echo "Restored: $restored_key"
+              echo -e "Account [$i]: ${red}Fail${nc} ($original_key != $restored_key)"
               exit 1
             fi
 
+            echo -e "Account [$i]: ${green}OK${nc}"
           done;
-          echo -e "${green}OK${nc}: Combine checks"
-
           #Split
-          echo -e "\nRunning split"
           ./dkc split
           splited_wallet=$(ethdo wallet --base-dir ./newwallets/old1 list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
-          echo -e "\nCheking keys after split"
+          echo -e "\n#  Split Tests"
           for i in $(echo $accounts_list); do
-            echo "Account: $i"
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
-            echo -e "${green}OK${nc}: $original_key $splited_key"
-
-            if [[ -z "$original_key" ]]; then
-              echo -e "${red}ERROR${nc}: Original key is empty"
-              exit 1
-            fi
 
             if [[ "$original_key" != "$splited_key" ]]; then
-              echo -e "${red}ERROR${nc}: Public Key for Account: $i is incorrect"
-              echo "Original: $original_key"
-              echo "Restored: $splited_key"
+              echo -e "Account [$i]: ${red}Fail${nc} ($original_key != $splited_key)"
               exit 1
             fi
 
+            echo -e "Account [$i]: ${green}OK${nc}"
           done;
-          echo -e "${green}OK${nc}: Split checks"
-          echo -e "\n${green}OK${nc}: All checks passed"
     env:
       wallet_name: "DW"
       path: "./.github/examples"
