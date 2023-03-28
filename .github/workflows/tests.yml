@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  logic-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -25,18 +25,21 @@ jobs:
       - name: "Test combine and split logic"
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          cd ./.github/basics/
+          cd "$path"
 
-          accounts_list="1 2 3 4"
-          original_wallet_name="DW"
+          accounts_list=$(/Users/voro/go/bin/ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name")
           #Combine
+          echo "Runing combine"
           ./dkc combine
           #Get combined wallet
           restored_wallet=$(ethdo wallet --base-dir ./restoredwallets/ list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
+          echo "Cheking keys after combine"
           for i in $(echo $accounts_list); do
-            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "DW/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             restored_key=$(ethdo account --base-dir ./restoredwallets info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
+            echo "Account: $i"
+            echo "OK: $original_key $restored_key"
 
             if [[ -z "$original_key" ]]; then
               echo "ERROR: Original key is empty"
@@ -51,14 +54,18 @@ jobs:
             fi
 
           done;
+          echo "OK: Combine checks"
 
           #Split
+          echo "Running split"
           ./dkc split
           splited_wallet=$(ethdo wallet --base-dir ./newwallets/old1 list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
           for i in $(echo $accounts_list); do
-            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "DW/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+          echo "Cheking keys after split"
+            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            echo "OK: $original_key $splited_key"
 
             if [[ -z "$original_key" ]]; then
               echo "ERROR: Original key is empty"
@@ -73,3 +80,8 @@ jobs:
             fi
 
           done;
+          echo "OK: Split checks"
+          echo "OK: All checks passed"
+        env:
+          wallet_name: "DW"
+          path: "./.github/examples"
