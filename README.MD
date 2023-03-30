@@ -12,6 +12,7 @@ The output binary will be under the name: `./dkc`
 - Mount `tmpfs` file system on `./wallets`. This is the path where input `distributed wallets` will be located.
 - Mount `tmpfs` file system on `./restoredwallets`. This is the path where output `non-deterministic wallets` will be located.
 - Prepare [config.yaml](./config.yaml). Update `peers:` section(this data can be obtained from devops team)
+- Place password file in `./wallets/passphrases.txt`
 - For each `peer` create directory inside [./wallets](./wallets) directory. The name of the directory must contain only `peer` name whithout port number.
 - Populate `wallets/peer` directories with data
 - Run `./dkc combine`
@@ -24,6 +25,7 @@ The output binary will be under the name: `./dkc`
 - Mount `tmpfs` file system on `./restoredwallets`. This is the path where input `non-deterministic wallets` will be located.
 - Mount `tmpfs` file system on `./newwallets`. This is the path where output `distributed wallets` will be located.
 - Prepare [config.yaml](./config.yaml). Update `peers:` section(this data can be obtained from devops team)
+- Place password file in `./wallets/passphrases.txt`
 - Populate [./restoredwallets](./restoredwallets) directory
 - Run `./dkc split`
 - Combined wallets will be located in the `./newwallets` directory
