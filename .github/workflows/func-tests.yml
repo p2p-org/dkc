@@ -43,8 +43,8 @@ jobs:
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
           #Prepare config
-          sed -i "s,DISTRIBUTED_WALLETS,./wallets,g"
-          sed -i "s,ND_WALLETS,./restoredwallets,g"
+          sed -i "s,DISTRIBUTED_WALLETS,./wallets,g" config.yaml
+          sed -i "s,ND_WALLETS,./restoredwallets,g" config.yaml
           #Combine
           ./dkc combine
           #Compare Composite Pubkey from original accounts to newly created accounts
@@ -66,8 +66,8 @@ jobs:
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
           #Prepare config
-          sed -i "s,DISTRIBUTED_WALLETS,./newwallets,g"
-          sed -i "s,ND_WALLETS,./restoredwallets,g"
+          sed -i "s,DISTRIBUTED_WALLETS,./newwallets,g" config.yaml
+          sed -i "s,ND_WALLETS,./restoredwallets,g" config.yaml
           #Split
           ./dkc split
           #Compare Composite Pubkey from original accounts to newly created accounts
