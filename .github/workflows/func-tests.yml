@@ -25,10 +25,10 @@ jobs:
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
-          accounts_list=$(ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name" | tr '\n' ' ')
+          accounts_list=$(ethdo wallet --base-dir "${input_distributed_wallets_path}/old1" accounts --wallet="$wallet_name" | tr '\n' ' ')
           echo -e "\n#  Original Keys"
           for i in $(echo $accounts_list); do
-            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            original_key=$(ethdo account --base-dir "${input_distributed_wallets_path}/old1/" info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
             if [[ -z "$original_key" ]]; then
               echo -e "Account [$i]: ${red}Fail${nc} (len($original_key) == 0)"
               exit 1
@@ -43,15 +43,16 @@ jobs:
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
           #Prepare config
-          sed -i "s,DISTRIBUTED_WALLETS,./wallets,g" config.yaml
-          sed -i "s,ND_WALLETS,./restoredwallets,g" config.yaml
+          sed -i "s,DISTRIBUTED_WALLETS,$input_distributed_wallets_path,g" config.yaml
+          sed -i "s,ND_WALLETS,$output_nd_wallets_path,g" config.yaml
           #Combine
           ./dkc combine
           #Compare Composite Pubkey from original accounts to newly created accounts
+          restored_wallet=$(ethdo wallet --base-dir "${output_nd_wallets_path}" list |head -n 1)
           echo -e "\n#  Combine Tests"
           for i in $(echo "${{ env.accounts_list }}"); do
-            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
-            restored_key=$(ethdo account --base-dir ./restoredwallets info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
+            original_key=$(ethdo account --base-dir "${input_distributed_wallets_path}/old1/" info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            restored_key=$(ethdo account --base-dir "${output_nd_wallets_path}" info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
 
             if [[ "$original_key" != "$restored_key" ]]; then
               echo -e "Account [$i]: ${red}Fail${nc} ($original_key != $restored_key)"
@@ -66,15 +67,16 @@ jobs:
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
           #Prepare config
-          sed -i "s,DISTRIBUTED_WALLETS,./newwallets,g" config.yaml
-          sed -i "s,ND_WALLETS,./restoredwallets,g" config.yaml
+          sed -i "s,DISTRIBUTED_WALLETS,$output_distributed_wallets_path,g" config.yaml
+          sed -i "s,ND_WALLETS,$output_nd_wallets_path,g" config.yaml
           #Split
           ./dkc split
+          splited_wallet=$(ethdo wallet --base-dir "${output_distributed_wallets_path}" list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
           echo -e "\n#  Split Tests"
           for i in $(echo "${{ env.accounts_list }}"); do
-            original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
-            splited_key=$(ethdo account --base-dir ./newwallets/old1/ info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            original_key=$(ethdo account --base-dir "${input_distributed_wallets_path}/old1/" info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            splited_key=$(ethdo account --base-dir "${output_distributed_wallets_path}/old1/" info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
 
             if [[ "$original_key" != "$splited_key" ]]; then
               echo -e "Account [$i]: ${red}Fail${nc} ($original_key != $splited_key)"
@@ -85,6 +87,9 @@ jobs:
           done;
     env:
       wallet_name: "DW"
+      input_distributed_wallets_path: "./wallets"
+      output_nd_wallets_path: "./nd_wallets"
+      output_distributed_wallets_path: "./distributed_wallets"
       path: "./.github/examples"
       red: '\033[0;31m'
       green: '\033[0;32m'
