@@ -1,4 +1,4 @@
-name: Snyk vulnerabilities finder
+name: Snyk Vulnerabilities Checker
 on:
   pull_request:
     branches: [ "main" ]
