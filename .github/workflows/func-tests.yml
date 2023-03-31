@@ -8,13 +8,14 @@ on:
 jobs:
   functional-tests:
     runs-on: ubuntu-latest
+    working-directory: './.github/examples/'
     steps:
       - uses: actions/checkout@v3
       - name: "Build dkc script"
         uses: actions/setup-go@v4
         with:
           go-version-file: './go.mod'
-      - run: go build -o "$path"
+      - run: go build ../../
 
       - name: "Install ethdo"
         run: |
@@ -24,7 +25,6 @@ jobs:
       - name: "Get Original Wallets"
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          cd "$path"
           accounts_list=$(ethdo wallet --base-dir "${input_distributed_wallets_path}/old1" accounts --wallet="$wallet_name" | tr '\n' ' ')
           echo -e "\n#  Original Keys"
           for i in $(echo $accounts_list); do
@@ -41,7 +41,6 @@ jobs:
       - name: "Prepare configs"
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          cd "$path"
           cp config.yaml config-combine.yaml
           cp config.yaml config-split.yaml
           #Split Config
@@ -54,7 +53,6 @@ jobs:
       - name: "COMBINE Function Test"
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          cd "$path"
           #Combine
           ./dkc combine --config=config-combine.yaml
           #Compare Composite Pubkey from original accounts to newly created accounts
@@ -75,7 +73,6 @@ jobs:
       - name: "Split Function Test"
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          cd "$path"
           #Split
           ./dkc split --config=config-split.yaml
           #Compare Composite Pubkey from original accounts to newly created accounts
@@ -97,7 +94,6 @@ jobs:
       input_distributed_wallets_path: "./wallets"
       output_nd_wallets_path: "./nd_wallets"
       output_distributed_wallets_path: "./distributed_wallets"
-      path: "./.github/examples"
       red: '\033[0;31m'
       green: '\033[0;32m'
       nc: '\033[0m'
