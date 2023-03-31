@@ -67,8 +67,8 @@ jobs:
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
           #Prepare config
-          sed -i "s,DISTRIBUTED_WALLETS,$output_distributed_wallets_path,g" config.yaml
-          sed -i "s,ND_WALLETS,$output_nd_wallets_path,g" config.yaml
+          sed -i "s,$input_distributed_wallets_path,$output_distributed_wallets_path,g" config.yaml
+          sed -i "s,$output_nd_wallets_path,$output_nd_wallets_path,g" config.yaml
           #Split
           ./dkc split
           #Compare Composite Pubkey from original accounts to newly created accounts
