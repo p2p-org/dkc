@@ -71,7 +71,7 @@ jobs:
           sed -i "s,ND_WALLETS,$output_nd_wallets_path,g" config.yaml
           #Split
           ./dkc split
-          splited_wallet=$(ethdo wallet --base-dir "${output_distributed_wallets_path}" list |head -n 1)
+          splited_wallet=$(ethdo wallet --base-dir "${output_distributed_wallets_path}/old1/" list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
           echo -e "\n#  Split Tests"
           for i in $(echo "${{ env.accounts_list }}"); do
