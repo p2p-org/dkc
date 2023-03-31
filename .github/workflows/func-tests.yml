@@ -25,7 +25,7 @@ jobs:
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
-          accounts_list=$(ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name")
+          accounts_list=$(ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name" | tr '\n' ' ')
           echo -e "\n#  Original Keys"
           for i in $(echo $accounts_list); do
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
