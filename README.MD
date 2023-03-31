@@ -8,28 +8,28 @@ go build .
 The output binary will be under the name: `./dkc`
 
 ## Usage
+Before you begin, please use tmpfs for storing recovered wallets and passwords.
 ### Combine
-- Mount `tmpfs` file system on `./wallets`. This is the path where input `distributed wallets` will be located.
-- Mount `tmpfs` file system on `./restoredwallets`. This is the path where output `non-deterministic wallets` will be located.
-- Prepare [config.yaml](./config.yaml). Update `peers:` section(this data can be obtained from devops team)
-- Place password file in `./wallets/passphrases.txt`
-- For each `peer` create a directory inside the [./wallets](./wallets) directory. The name of the directory must contain only the `peer` name without the port number.
-- Populate `wallets/peer` directories with data
-- Run `./dkc combine`
-- Combined wallets will be located in the `./restoredwallets` directory
-- Additional:
-    Check number the of accounts in each wallet, it must equal the number of accounts for each peer's wallet.
-    Check `composite pubkey(first element of verificationvector json field)` for each peer account with `pubkey` field in combined accounts
+- Prepare [config.yaml](./config.yaml).
+    Update `peers` section(this data can be obtained from devops team)
+    Update `distributed-wallets` this is the path where input wallets are located
+    Update `passphrases` this is passwords list for the input and output wallets
+    Update `nd-wallets` this is the path where output wallets will be located
+- Run:
+```
+./dkc combine --config config.yaml
+```
+- Non-deterministic wallets will be located in the `nd-wallets` directory
 
 ### Split
-- Mount `tmpfs` file system on `./restoredwallets`. This is the path where input `non-deterministic wallets` will be located.
-- Mount `tmpfs` file system on `./newwallets`. This is the path where output `distributed wallets` will be located.
-- Prepare [config.yaml](./config.yaml). Update `peers:` section(this data can be obtained from devops team)
-- Place password file in `./wallets/passphrases.txt`
-- Populate [./restoredwallets](./restoredwallets) directory
-- Run `./dkc split`
-- Combined wallets will be located in the `./newwallets` directory
-- Additional:
-    Check the number of accounts in each peer's wallet, it must equal to the number of accounts for each `non-deterministic wallet`.
-    Check `pubkey` for the input accounts with the `composite pubkey(first element of verificationvector json field)` of outputs accounts for each peer.
+- Prepare [config.yaml](./config.yaml).
+    Update `peers` section(this data can be obtained from devops team)
+    Update `nd-wallets` this is the path where input wallets will be located
+    Update `passphrases` this is passwords list for the input and output wallets
+    Update `distributed-wallets` this is the path where output wallets will be located
+- Run:
+```
+./dkc combine --config config.yaml
+```
+- Distributed wallets will be located in the `distributed-wallets` directory
 

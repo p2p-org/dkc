@@ -1,4 +1,4 @@
-passphrases: ./wallets/passphrases.txt
+passphrases: ./passphrases.txt
 distributed-wallets: DISTRIBUTED_WALLETS
 nd-wallets: ND_WALLETS
 signing-threshold: 2
