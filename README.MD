@@ -1,5 +1,5 @@
-# dkc
-Dirk Key Converter
+# Dirk Key Converter (dkc)
+Transform wallets between [distributed type](https://github.com/wealdtech/go-eth2-wallet-distributed) and [non-deterministic type](https://github.com/wealdtech/go-eth2-wallet-nd).
 
 ## Build
 ```

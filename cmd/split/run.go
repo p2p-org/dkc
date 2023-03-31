@@ -23,6 +23,8 @@ type AccountExtends struct {
 func Run() {
 	ctx := context.Background()
 	signString := "testingStringABC"
+	distributedWalletsPath := viper.GetString("distributed-wallets")
+	ndWalletsPath := viper.GetString("nd-wallets")
 	threshold := viper.GetUint32("signing-threshold")
 	accountsPasswords := service.GetAccountsPasswords()
 	accountDatas := make(map[string]AccountExtends)
@@ -36,13 +38,13 @@ func Run() {
 	for id, peer := range peers {
 		peersIDs = append(peersIDs, id)
 		res := regexp.MustCompile(`:.*`)
-		storePath := "./newwallets/" + res.ReplaceAllString(peer, "")
+		storePath := distributedWalletsPath + "/" + res.ReplaceAllString(peer, "")
 		store := service.CreateStore(storePath)
 		wallet := service.CreateWallet(store, "distributed")
 		walletsMap[id] = wallet
 	}
 
-	s, err := service.LoadStore(ctx, "./restoredwallets", accountsPasswords)
+	s, err := service.LoadStore(ctx, ndWalletsPath, accountsPasswords)
 	if err != nil {
 		fmt.Println(err)
 	}

@@ -21,17 +21,11 @@ jobs:
           go install "github.com/wealdtech/ethdo@$ethdo_version"
         env:
           ethdo_version: "v1.28.5"
-
-      - name: "Test combine and split logic"
+      - name: "Get Original Wallets"
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cd "$path"
-
           accounts_list=$(ethdo wallet --base-dir ./wallets/old1 accounts --wallet="$wallet_name")
-          #Combine
-          ./dkc combine
-          #Get combined wallet
-          restored_wallet=$(ethdo wallet --base-dir ./restoredwallets/ list |head -n 1)
           echo -e "\n#  Original Keys"
           for i in $(echo $accounts_list); do
             original_key=$(ethdo account --base-dir ./wallets/old1/ info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
@@ -42,6 +36,17 @@ jobs:
 
             echo -e "Account [$i]: $original_key"
           done;
+          echo "::set-env name=accounts_list::$accounts_list"
+
+      - name: "COMBINE Function Test"
+        run: |
+          #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
+          cd "$path"
+          #Prepare config
+          sed -i "s,DISTRIBUTED_WALLETS,./wallets,g"
+          sed -i "s,ND_WALLETS,./restoredwallets,g"
+          #Combine
+          ./dkc combine
           #Compare Composite Pubkey from original accounts to newly created accounts
           echo -e "\n#  Combine Tests"
           for i in $(echo $accounts_list); do
@@ -55,9 +60,16 @@ jobs:
 
             echo -e "Account [$i]: ${green}OK${nc}"
           done;
+
+      - name: "Split Function Test"
+        run: |
+          #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
+          cd "$path"
+          #Prepare config
+          sed -i "s,DISTRIBUTED_WALLETS,./newwallets,g"
+          sed -i "s,ND_WALLETS,./restoredwallets,g"
           #Split
           ./dkc split
-          splited_wallet=$(ethdo wallet --base-dir ./newwallets/old1 list |head -n 1)
           #Compare Composite Pubkey from original accounts to newly created accounts
           echo -e "\n#  Split Tests"
           for i in $(echo $accounts_list); do

@@ -21,11 +21,12 @@ type AccountExtends struct {
 func Run() {
 	ctx := context.Background()
 	signString := "testingStringABC"
-	walletDir := viper.GetString("walletDir")
+	distributedWalletsPath := viper.GetString("distributed-wallets")
+	ndWalletsPath := viper.GetString("nd-wallets")
 	var peers service.Peers
 	passphrases := service.GetAccountsPasswords()
 	accountDatas := make(map[string]AccountExtends)
-	stores, err := service.LoadStores(ctx, walletDir, passphrases)
+	stores, err := service.LoadStores(ctx, distributedWalletsPath, passphrases)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -71,7 +72,7 @@ func Run() {
 		}
 	}
 
-	store := service.CreateStore("./restoredwallets")
+	store := service.CreateStore(ndWalletsPath)
 	wallet := service.CreateWallet(store, "non-deterministic")
 	for accountName, account := range accountDatas {
 		key, err := bls.Recover(ctx, account.Accounts)
