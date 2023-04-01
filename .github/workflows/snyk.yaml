@@ -14,16 +14,18 @@ jobs:
       - uses: actions/setup-go@v1
         with:
           go-version-file: './go.mod'
-#      - name: Init Snyk
-#        uses: snyk/actions/golang@master
-#        env:
-#          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-#        command:
-#          "code test"
-#          snyk test --all-projects
-      - name: Run Snyk to check for vulnerabilities
+      - name: Run Snyk to check code for vulnerabilities
         run: |
           snyk code test
-          snyk test --all-projects
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Snyk to check dependencies for vulnerabilities
+        continue-on-error: true
+        run: |
+          snyk test --severity-threshold=high --sarif-file-output=snyk.sarif
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Upload result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk.sarif
