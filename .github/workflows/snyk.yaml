@@ -16,8 +16,8 @@ jobs:
       - name: Init Snyk
         uses: snyk/actions/golang@master
       - name: Run Snyk to check for vulnerabilities
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           snyk code test
           snyk test --all-projects
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
