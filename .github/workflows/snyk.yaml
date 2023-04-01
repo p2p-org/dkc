@@ -10,19 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-#      - uses: actions/setup-go@v1
-#        with:
-#          go-version-file: './go.mod'
-      - name: Init Snyk
-        uses: snyk/actions/golang@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        command:
-          "code test"
-#          snyk test --all-projects
-#      - name: Run Snyk to check for vulnerabilities
-#        run: |
-#          snyk code test
-#          snyk test --all-projects
+      - uses: snyk/actions/setup@master
+      - uses: actions/setup-go@v1
+        with:
+          go-version-file: './go.mod'
+#      - name: Init Snyk
+#        uses: snyk/actions/golang@master
 #        env:
 #          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#        command:
+#          "code test"
+#          snyk test --all-projects
+      - name: Run Snyk to check for vulnerabilities
+        run: |
+          snyk code test
+          snyk test --all-projects
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
