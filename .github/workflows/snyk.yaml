@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions/setup-go@v1
-        with:
-          go-version-file: './go.mod'
+#      - uses: actions/setup-go@v1
+#        with:
+#          go-version-file: './go.mod'
       - name: Init Snyk
         uses: snyk/actions/golang@master
         env:
