@@ -65,14 +65,14 @@ jobs:
           echo -e "#  Combine Tests"
           for account in "${!account_pubkey_map[@]}"; do
             original_key="${account_pubkey_map[$account]}"
-            restored_key=$(ethdo account --base-dir "${output_nd_wallets_path}" info --account "$restored_wallet/$i" | grep -i "Public key:" | awk '{print $NF}')
+            restored_key=$(ethdo account --base-dir "${output_nd_wallets_path}" info --account "$restored_wallet/$account" | grep -i "Public key:" | awk '{print $NF}')
 
             if [[ "$original_key" != "$restored_key" ]]; then
-              echo -e "Account [$i]: ${red}Fail${nc} ($original_key != $restored_key)"
+              echo -e "Account [$account]: ${red}Fail${nc} ($original_key != $restored_key)"
               exit 1
             fi
 
-            echo -e "Account [$i]: ${green}OK${nc}"
+            echo -e "Account [$account]: ${green}OK${nc}"
           done;
 
       - name: "Split Function Test"
@@ -85,14 +85,14 @@ jobs:
           echo -e "#  Split Tests"
           for account in "${!account_pubkey_map[@]}"; do
             original_key="${account_pubkey_map[$account]}"
-            splited_key=$(ethdo account --base-dir "${output_distributed_wallets_path}/old1/" info --account "$splited_wallet/$i" | grep -i "Composite public key:" | awk '{print $NF}')
+            splited_key=$(ethdo account --base-dir "${output_distributed_wallets_path}/old1/" info --account "$splited_wallet/$account" | grep -i "Composite public key:" | awk '{print $NF}')
 
             if [[ "$original_key" != "$splited_key" ]]; then
-              echo -e "Account [$i]: ${red}Fail${nc} ($original_key != $splited_key)"
+              echo -e "Account [$account]: ${red}Fail${nc} ($original_key != $splited_key)"
               exit 1
             fi
 
-            echo -e "Account [$i]: ${green}OK${nc}"
+            echo -e "Account [$account]: ${green}OK${nc}"
           done;
     env:
       wallet_name: "DW"
