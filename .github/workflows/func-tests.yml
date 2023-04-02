@@ -10,6 +10,7 @@ jobs:
     defaults:
       run:
         working-directory: './.github/examples/'
+        shell: bash
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
