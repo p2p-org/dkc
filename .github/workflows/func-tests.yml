@@ -28,8 +28,7 @@ jobs:
       - name: "Get Original Wallets"
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          #Delcarate hashmap for storing account and it's pubkey
-          declare -A account_pubkey_map
+          account_pubkey_map='{}'
           accounts_list=$(ethdo wallet --base-dir "${input_distributed_wallets_path}/old1" accounts --wallet="$wallet_name" | tr '\n' ' ')
           echo -e "#  Original Keys"
           for i in $(echo $accounts_list); do
@@ -38,12 +37,11 @@ jobs:
               echo -e "Account [$i]: ${red}Fail${nc} (len($original_key) == 0)"
               exit 1
             fi
-            account_pubkey_map[i]+=$original_key
+            account_pubkey_map=$(echo ${account_pubkey_map} | jq --arg account $i --arg key $original_key '. + {"$account": "$key"}')
 
             echo -e "Account [$i]: $original_key"
           done;
-          echo "$account_pubkey_map"
-          echo "account_pubkey_map=$(type -p account_pubkey_map)" >> $GITHUB_ENV
+          echo "account_pubkey_map=$account_pubkey_map" >> $GITHUB_ENV
 
       - name: "Prepare configs"
         run: |
@@ -65,8 +63,8 @@ jobs:
           #Compare Composite Pubkey from original accounts to newly created accounts
           restored_wallet=$(ethdo wallet --base-dir "${output_nd_wallets_path}" list |head -n 1)
           echo -e "#  Combine Tests"
-          for account in "${!account_pubkey_map[@]}"; do
-            original_key="${account_pubkey_map[$account]}"
+          for account in $(echo "${account_pubkey_map}" | jq -r 'keys []'); do
+            original_key=$(cat "${account_pubkey_map}" | jq -r --arg account account '.$account')
             restored_key=$(ethdo account --base-dir "${output_nd_wallets_path}" info --account "$restored_wallet/$account" | grep -i "Public key:" | awk '{print $NF}')
 
             if [[ "$original_key" != "$restored_key" ]]; then
@@ -85,8 +83,8 @@ jobs:
           #Compare Composite Pubkey from original accounts to newly created accounts
           splited_wallet=$(ethdo wallet --base-dir "${output_distributed_wallets_path}/old1/" list |head -n 1)
           echo -e "#  Split Tests"
-          for account in "${!account_pubkey_map[@]}"; do
-            original_key="${account_pubkey_map[$account]}"
+          for account in $(echo "${account_pubkey_map}" | jq -r 'keys []'); do
+            original_key=$(cat "${account_pubkey_map}" | jq -r --arg account account '.$account')
             splited_key=$(ethdo account --base-dir "${output_distributed_wallets_path}/old1/" info --account "$splited_wallet/$account" | grep -i "Composite public key:" | awk '{print $NF}')
 
             if [[ "$original_key" != "$splited_key" ]]; then
