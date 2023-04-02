@@ -42,7 +42,6 @@ jobs:
 
             echo -e "Account [$i]: $original_key"
           done;
-          echo "${account_pubkey_map}"
           echo "account_pubkey_map=${account_pubkey_map}" >> $GITHUB_ENV
 
       - name: "Prepare configs"
