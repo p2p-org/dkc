@@ -66,10 +66,7 @@ jobs:
           restored_wallet=$(ethdo wallet --base-dir "${output_nd_wallets_path}" list |head -n 1)
           echo -e "#  Combine Tests"
           for account in $(echo "${account_pubkey_map}" | jq -r 'keys []'); do
-            echo "$account"
-            echo "$account"
-            echo "$account"
-            original_key=$(cat "${account_pubkey_map}" | jq -r --arg account account '.($account)')
+            original_key=$(cat "${account_pubkey_map}" | jq -r --arg account account '.[$account]')
             restored_key=$(ethdo account --base-dir "${output_nd_wallets_path}" info --account "$restored_wallet/$account" | grep -i "Public key:" | awk '{print $NF}')
 
             if [[ "$original_key" != "$restored_key" ]]; then
