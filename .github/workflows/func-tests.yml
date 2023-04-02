@@ -37,7 +37,7 @@ jobs:
               echo -e "Account [$i]: ${red}Fail${nc} (len($original_key) == 0)"
               exit 1
             fi
-            account_pubkey_map=$(echo ${account_pubkey_map} | jq --arg account $i --arg key $original_key '. + {$account: $key}')
+            account_pubkey_map=$(echo ${account_pubkey_map} | jq --arg account $i --arg key $original_key '. + { $account: $key }')
 
             echo -e "Account [$i]: $original_key"
           done;
