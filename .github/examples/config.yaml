@@ -1,5 +1,6 @@
-passphrases: ./wallets/passphrases.txt
-master-key: ./test.key
+passphrases: ./passphrases.txt
+distributed-wallets: DISTRIBUTED_WALLETS
+nd-wallets: ND_WALLETS
 signing-threshold: 2
 peers:
   10: old1:9091
