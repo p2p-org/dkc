@@ -39,10 +39,10 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "config file")
 
-	rootCmd.PersistentFlags().String("keystore-dir", "./keystores", "Directory with keystores")
+	rootCmd.PersistentFlags().String("nd-wallets", "./nd-wallets", "Directory with keystores")
 	viper.BindPFlag("keystoreDir", rootCmd.PersistentFlags().Lookup("keystore-dir"))
 
-	rootCmd.PersistentFlags().String("wallet-dir", "./wallets", "Directory with dirk wallets")
+	rootCmd.PersistentFlags().String("distributed-wallets", "./distributed-wallets", "Directory with dirk wallets")
 	viper.BindPFlag("walletDir", rootCmd.PersistentFlags().Lookup("wallet-dir"))
 }
 func initConfig() {
