@@ -184,8 +184,7 @@ func sample2() {
 	var rk bls.SecretKey
 	if err := rk.Recover(subSKs, subIDs); err != nil {
 	}
-		fmt.Printf("Recovered key=%v\n", rk.SerializeToHexStr())
-
+	fmt.Printf("Recovered key=%v\n", rk.SerializeToHexStr())
 
 }
 
