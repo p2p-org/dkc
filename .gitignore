@@ -1,12 +1,14 @@
 # Nix
 .direnv
 .envrc
+result
+.pre-commit-config.yaml
 
 # Go
 main
+dkc
 
 # Test
 podman-data
 keystores
-dkc
 .key
