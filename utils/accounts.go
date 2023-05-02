@@ -19,6 +19,7 @@ func CreateNDAccount(
 	if err != nil {
 		panic(err)
 	}
+
 	defer wallet.(types.WalletLocker).Lock(context.Background())
 
 	account, err = wallet.(types.WalletAccountImporter).ImportAccount(context.Background(),
@@ -47,7 +48,6 @@ func CreateAccount(
 		panic(err)
 	}
 
-	// Always immediately defer locking the wallet to ensure it does not remain unlocked outside of the function.
 	defer wallet.(types.WalletLocker).Lock(context.Background())
 
 	signingThreshold := threshold

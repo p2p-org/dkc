@@ -3,6 +3,7 @@ package combine
 import (
 	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"regexp"
 
@@ -30,6 +31,18 @@ type CombineRuntime struct {
 	store                  types.Store
 }
 
+func getAccountsPasswords() [][]byte {
+	accountsPasswordPath := viper.GetString("passphrases")
+
+	content, err := os.ReadFile(accountsPasswordPath)
+	if err != nil {
+		panic(err)
+	}
+
+	accountsPasswords := bytes.Split(content, []byte{'\n'})
+	return accountsPasswords
+}
+
 func newCombineRuntime() (*CombineRuntime, error) {
 	var peers utils.Peers
 	cr := &CombineRuntime{}
@@ -38,7 +51,7 @@ func newCombineRuntime() (*CombineRuntime, error) {
 	cr.ctx = context.Background()
 	cr.distributedWalletsPath = viper.GetString("distributed-wallets")
 	cr.ndWalletsPath = viper.GetString("nd-wallets")
-	cr.passphrases = utils.GetAccountsPasswords()
+	cr.passphrases = getAccountsPasswords()
 	cr.accountDatas = make(map[string]AccountExtends)
 	cr.stores, err = utils.LoadStores(cr.ctx, cr.distributedWalletsPath, cr.passphrases)
 	if err != nil {

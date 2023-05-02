@@ -3,6 +3,7 @@ package split
 import (
 	"bytes"
 	"context"
+	"os"
 	"regexp"
 
 	"github.com/p2p-org/dkc/utils"
@@ -31,6 +32,18 @@ type AccountExtends struct {
 	MasterPKs        [][]byte
 }
 
+func getAccountsPasswords() [][]byte {
+	accountsPasswordPath := viper.GetString("passphrases")
+
+	content, err := os.ReadFile(accountsPasswordPath)
+	if err != nil {
+		panic(err)
+	}
+
+	accountsPasswords := bytes.Split(content, []byte{'\n'})
+	return accountsPasswords
+}
+
 func newSplitRuntime() (*SplitRuntime, error) {
 	var peers utils.Peers
 	sr := &SplitRuntime{}
@@ -40,7 +53,7 @@ func newSplitRuntime() (*SplitRuntime, error) {
 	sr.distributedWalletsPath = viper.GetString("distributed-wallets")
 	sr.ndWalletsPath = viper.GetString("nd-wallets")
 	sr.threshold = viper.GetUint32("signing-threshold")
-	sr.passphrases = utils.GetAccountsPasswords()
+	sr.passphrases = getAccountsPasswords()
 	sr.accountDatas = make(map[string]AccountExtends)
 	sr.walletsMap = make(map[uint64]types.Wallet)
 
