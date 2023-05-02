@@ -1,4 +1,4 @@
-package service
+package utils
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
+
+const signingString = "bkeCE2vRuTxxc5RpzrvLzoU5EgulV7uk3zMnt5MP9MgsXBaif9mUQcf7rZGC5mNj9lBqQ2s"
 
 func CreateNDAccount(
 	key []byte,
@@ -67,16 +69,16 @@ func CreateAccount(
 
 }
 
-func AccountSign(ctx context.Context, acc types.Account, signerData []byte, passphrases [][]byte) []byte {
+func AccountSign(ctx context.Context, acc types.Account, passphrases [][]byte) []byte {
 	account := unlockAccount(ctx, acc, passphrases)
 	accountSigner := account.(types.AccountSigner)
 
-	signedData, err := accountSigner.Sign(ctx, signerData)
+	signedData, err := accountSigner.Sign(ctx, []byte(signingString))
 	if err != nil {
 		panic(err)
 	}
 
-	if !signedData.Verify(signerData, acc.PublicKey()) {
+	if !signedData.Verify([]byte(signingString), acc.PublicKey()) {
 		panic("rap")
 	}
 
