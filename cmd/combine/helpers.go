@@ -27,7 +27,7 @@ type CombineRuntime struct {
 	accountDatas           map[string]AccountExtends
 	stores                 []utils.DirkStore
 	peers                  utils.Peers
-	wallet                 types.Wallet
+	wallet                 utils.NDWallet
 	store                  types.Store
 }
 
@@ -70,7 +70,7 @@ func newCombineRuntime() (*CombineRuntime, error) {
 
 func (cr *CombineRuntime) createWalletAndStore() error {
 	cr.store = utils.CreateStore(cr.ndWalletsPath)
-	cr.wallet = utils.CreateWallet(cr.store, "non-deterministic")
+	cr.wallet = utils.CreateNDWallet(cr.store)
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (cr *CombineRuntime) checkSignature() error {
 
 		initialSignature := bls.Sign(cr.ctx, account.Accounts)
 
-		finalAccount := utils.CreateAccount(cr.wallet, accountName, [][]byte{}, key, 0, map[uint64]string{}, cr.passphrases[0])
+		finalAccount := utils.CreateNDAccount(cr.wallet, accountName, key, cr.passphrases[0])
 
 		finalSignature := utils.AccountSign(cr.ctx, finalAccount, cr.passphrases)
 

@@ -9,7 +9,6 @@ import (
 	"github.com/p2p-org/dkc/utils"
 	"github.com/p2p-org/dkc/utils/crypto/bls"
 	"github.com/spf13/viper"
-	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
 type SplitRuntime struct {
@@ -20,7 +19,7 @@ type SplitRuntime struct {
 	accountDatas           map[string]AccountExtends
 	peers                  utils.Peers
 	threshold              uint32
-	walletsMap             map[uint64]types.Wallet
+	walletsMap             map[uint64]utils.DWallet
 	peersIDs               []uint64
 }
 
@@ -55,7 +54,7 @@ func newSplitRuntime() (*SplitRuntime, error) {
 	sr.threshold = viper.GetUint32("signing-threshold")
 	sr.passphrases = getAccountsPasswords()
 	sr.accountDatas = make(map[string]AccountExtends)
-	sr.walletsMap = make(map[uint64]types.Wallet)
+	sr.walletsMap = make(map[uint64]utils.DWallet)
 
 	err = viper.UnmarshalKey("peers", &peers)
 	if err != nil {
@@ -73,7 +72,7 @@ func (sr *SplitRuntime) createWallets() error {
 		res := regexp.MustCompile(`:.*`)
 		storePath := sr.distributedWalletsPath + "/" + res.ReplaceAllString(peer, "")
 		store := utils.CreateStore(storePath)
-		wallet := utils.CreateWallet(store, "distributed")
+		wallet := utils.CreateDWallet(store)
 		sr.walletsMap[id] = wallet
 	}
 	sr.peersIDs = peersIDs
@@ -116,7 +115,7 @@ func (sr *SplitRuntime) loadWallets() error {
 func (sr *SplitRuntime) saveAccounts() error {
 	for accountName, account := range sr.accountDatas {
 		for i, acc := range account.Accounts {
-			finalAccount := utils.CreateAccount(
+			finalAccount := utils.CreateDAccount(
 				sr.walletsMap[acc.ID],
 				accountName,
 				account.MasterPKs,

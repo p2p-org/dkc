@@ -7,18 +7,36 @@ import (
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
-type ndWallet interface {
-	types.WalletAccountImporter
-}
-
-type dWallet interface {
-	types.WalletDistributedAccountImporter
-}
-
 const signingString = "bkeCE2vRuTxxc5RpzrvLzoU5EgulV7uk3zMnt5MP9MgsXBaif9mUQcf7rZGC5mNj9lBqQ2s"
 
-func CreateAccount(
-	wallet types.Wallet,
+func CreateNDAccount(
+	wallet NDWallet,
+	name string,
+	masterSK []byte,
+	passphrase []byte,
+) (account types.Account) {
+
+	err := wallet.Unlock(context.Background(), nil)
+	if err != nil {
+		panic(err)
+	}
+
+	defer wallet.Lock(context.Background())
+
+	account, err = wallet.ImportAccount(context.Background(),
+		name,
+		masterSK,
+		passphrase,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	return
+}
+
+func CreateDAccount(
+	wallet DWallet,
 	name string,
 	masterPKs [][]byte,
 	masterSK []byte,
@@ -27,39 +45,21 @@ func CreateAccount(
 	passphrase []byte,
 ) (account types.Account) {
 
-	err := wallet.(types.WalletLocker).Unlock(context.Background(), nil)
+	err := wallet.Unlock(context.Background(), nil)
 	if err != nil {
 		panic(err)
 	}
 
 	defer wallet.(types.WalletLocker).Lock(context.Background())
 
-	switch wallet := wallet.(type) {
-	case ndWallet:
-		account, err = wallet.ImportAccount(context.Background(),
-			name,
-			masterSK,
-			passphrase,
-		)
-		if err != nil {
-			panic(err)
-		}
-	case dWallet:
-		signingThreshold := threshold
-		verificationVector := masterPKs
-		participants := peers
-
-		account, err = wallet.ImportDistributedAccount(context.Background(),
-			name,
-			masterSK,
-			signingThreshold,
-			verificationVector,
-			participants,
-			passphrase)
-		if err != nil {
-			panic(err)
-		}
-	default:
+	account, err = wallet.ImportDistributedAccount(context.Background(),
+		name,
+		masterSK,
+		threshold,
+		masterPKs,
+		peers,
+		passphrase)
+	if err != nil {
 		panic(err)
 	}
 
