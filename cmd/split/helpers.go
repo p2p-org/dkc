@@ -118,12 +118,12 @@ func (sr *SplitRuntime) saveAccounts() error {
 		for i, acc := range account.Accounts {
 			finalAccount := utils.CreateAccount(
 				sr.walletsMap[acc.ID],
-				sr.passphrases[0],
 				accountName,
 				account.MasterPKs,
 				acc.Key,
 				sr.threshold,
 				sr.peers,
+				sr.passphrases[0],
 			)
 
 			account.Accounts[i].Signature = utils.AccountSign(sr.ctx, finalAccount, sr.passphrases)

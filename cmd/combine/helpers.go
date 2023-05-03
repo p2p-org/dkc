@@ -83,7 +83,7 @@ func (cr *CombineRuntime) checkSignature() error {
 
 		initialSignature := bls.Sign(cr.ctx, account.Accounts)
 
-		finalAccount := utils.CreateNDAccount(key, accountName, cr.passphrases[0], cr.wallet)
+		finalAccount := utils.CreateAccount(cr.wallet, accountName, [][]byte{}, key, 0, map[uint64]string{}, cr.passphrases[0])
 
 		finalSignature := utils.AccountSign(cr.ctx, finalAccount, cr.passphrases)
 

@@ -7,42 +7,26 @@ import (
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
-const signingString = "bkeCE2vRuTxxc5RpzrvLzoU5EgulV7uk3zMnt5MP9MgsXBaif9mUQcf7rZGC5mNj9lBqQ2s"
-
-func CreateNDAccount(
-	key []byte,
-	name string,
-	passphrase []byte,
-	wallet types.Wallet,
-) (account types.Account) {
-	err := wallet.(types.WalletLocker).Unlock(context.Background(), nil)
-	if err != nil {
-		panic(err)
-	}
-
-	defer wallet.(types.WalletLocker).Lock(context.Background())
-
-	account, err = wallet.(types.WalletAccountImporter).ImportAccount(context.Background(),
-		name,
-		key,
-		passphrase,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	return account
+type ndWallet interface {
+	types.WalletAccountImporter
 }
+
+type dWallet interface {
+	types.WalletDistributedAccountImporter
+}
+
+const signingString = "bkeCE2vRuTxxc5RpzrvLzoU5EgulV7uk3zMnt5MP9MgsXBaif9mUQcf7rZGC5mNj9lBqQ2s"
 
 func CreateAccount(
 	wallet types.Wallet,
-	accountsPassword []byte,
 	name string,
 	masterPKs [][]byte,
 	masterSK []byte,
 	threshold uint32,
 	peers map[uint64]string,
+	passphrase []byte,
 ) (account types.Account) {
+
 	err := wallet.(types.WalletLocker).Unlock(context.Background(), nil)
 	if err != nil {
 		panic(err)
@@ -50,23 +34,36 @@ func CreateAccount(
 
 	defer wallet.(types.WalletLocker).Lock(context.Background())
 
-	signingThreshold := threshold
-	verificationVector := masterPKs
-	participants := peers
+	switch wallet := wallet.(type) {
+	case ndWallet:
+		account, err = wallet.ImportAccount(context.Background(),
+			name,
+			masterSK,
+			passphrase,
+		)
+		if err != nil {
+			panic(err)
+		}
+	case dWallet:
+		signingThreshold := threshold
+		verificationVector := masterPKs
+		participants := peers
 
-	account, err = wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(context.Background(),
-		name,
-		masterSK,
-		signingThreshold,
-		verificationVector,
-		participants,
-		accountsPassword)
-	if err != nil {
+		account, err = wallet.ImportDistributedAccount(context.Background(),
+			name,
+			masterSK,
+			signingThreshold,
+			verificationVector,
+			participants,
+			passphrase)
+		if err != nil {
+			panic(err)
+		}
+	default:
 		panic(err)
 	}
 
 	return
-
 }
 
 func AccountSign(ctx context.Context, acc types.Account, passphrases [][]byte) []byte {
