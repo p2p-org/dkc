@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/herumi/bls-eth-go-binary/bls"
-	"github.com/p2p-org/dkc/service"
+	"github.com/p2p-org/dkc/utils"
 )
 
 func Split(ctx context.Context, key []byte, threshold uint32) (
@@ -27,7 +27,7 @@ func Split(ctx context.Context, key []byte, threshold uint32) (
 	return
 }
 
-func Sign(ctx context.Context, accounts []service.Account) []byte {
+func Sign(ctx context.Context, accounts []utils.Account) []byte {
 	var subSignatures []bls.Sign
 	var subIDs []bls.ID
 	var sig bls.Sign
@@ -53,7 +53,7 @@ func Sign(ctx context.Context, accounts []service.Account) []byte {
 	return sig.Serialize()
 }
 
-func Recover(ctx context.Context, accounts []service.Account) ([]byte, error) {
+func Recover(ctx context.Context, accounts []utils.Account) ([]byte, error) {
 	var subIDs []bls.ID
 	var subSKs []bls.SecretKey
 	for _, account := range accounts {
@@ -77,7 +77,7 @@ func Recover(ctx context.Context, accounts []service.Account) ([]byte, error) {
 }
 
 func SetupParticipants(masterSKs [][]byte, masterPKs [][]byte, ids []uint64, threshold int) (
-	accounts []service.Account,
+	accounts []utils.Account,
 ) {
 	var mSKs []bls.SecretKey
 
@@ -96,7 +96,7 @@ func SetupParticipants(masterSKs [][]byte, masterPKs [][]byte, ids []uint64, thr
 		}
 
 		accounts = append(accounts,
-			service.Account{
+			utils.Account{
 				Key:       sk.Serialize(),
 				ID:        ids[i],
 				Signature: nil,

@@ -1,4 +1,4 @@
-package service
+package utils
 
 import (
 	"context"
@@ -7,76 +7,75 @@ import (
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
+const signingString = "bkeCE2vRuTxxc5RpzrvLzoU5EgulV7uk3zMnt5MP9MgsXBaif9mUQcf7rZGC5mNj9lBqQ2s"
+
 func CreateNDAccount(
-	key []byte,
+	wallet NDWallet,
 	name string,
+	masterSK []byte,
 	passphrase []byte,
-	wallet types.Wallet,
 ) (account types.Account) {
-	err := wallet.(types.WalletLocker).Unlock(context.Background(), nil)
+
+	err := wallet.Unlock(context.Background(), nil)
 	if err != nil {
 		panic(err)
 	}
-	defer wallet.(types.WalletLocker).Lock(context.Background())
 
-	account, err = wallet.(types.WalletAccountImporter).ImportAccount(context.Background(),
+	defer wallet.Lock(context.Background())
+
+	account, err = wallet.ImportAccount(context.Background(),
 		name,
-		key,
+		masterSK,
 		passphrase,
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	return account
+	return
 }
 
-func CreateAccount(
-	wallet types.Wallet,
-	accountsPassword []byte,
+func CreateDAccount(
+	wallet DWallet,
 	name string,
 	masterPKs [][]byte,
 	masterSK []byte,
 	threshold uint32,
 	peers map[uint64]string,
+	passphrase []byte,
 ) (account types.Account) {
-	err := wallet.(types.WalletLocker).Unlock(context.Background(), nil)
+
+	err := wallet.Unlock(context.Background(), nil)
 	if err != nil {
 		panic(err)
 	}
 
-	// Always immediately defer locking the wallet to ensure it does not remain unlocked outside of the function.
 	defer wallet.(types.WalletLocker).Lock(context.Background())
 
-	signingThreshold := threshold
-	verificationVector := masterPKs
-	participants := peers
-
-	account, err = wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(context.Background(),
+	account, err = wallet.ImportDistributedAccount(context.Background(),
 		name,
 		masterSK,
-		signingThreshold,
-		verificationVector,
-		participants,
-		accountsPassword)
+		threshold,
+		masterPKs,
+		peers,
+		passphrase)
 	if err != nil {
 		panic(err)
 	}
 
 	return
-
 }
 
-func AccountSign(ctx context.Context, acc types.Account, signerData []byte, passphrases [][]byte) []byte {
+func AccountSign(ctx context.Context, acc types.Account, passphrases [][]byte) []byte {
 	account := unlockAccount(ctx, acc, passphrases)
 	accountSigner := account.(types.AccountSigner)
 
-	signedData, err := accountSigner.Sign(ctx, signerData)
+	signedData, err := accountSigner.Sign(ctx, []byte(signingString))
 	if err != nil {
 		panic(err)
 	}
 
-	if !signedData.Verify(signerData, acc.PublicKey()) {
+	if !signedData.Verify([]byte(signingString), acc.PublicKey()) {
 		panic("rap")
 	}
 
