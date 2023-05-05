@@ -1,9 +1,7 @@
 package combine
 
 import (
-	"bytes"
 	"context"
-	"os"
 	"path/filepath"
 	"regexp"
 
@@ -20,57 +18,66 @@ type AccountExtends struct {
 }
 
 type CombineRuntime struct {
-	ctx                    context.Context
-	distributedWalletsPath string
-	ndWalletsPath          string
-	passphrases            [][]byte
-	accountDatas           map[string]AccountExtends
-	stores                 []utils.DirkStore
-	peers                  utils.Peers
-	wallet                 utils.NDWallet
-	store                  types.Store
-}
-
-func getAccountsPasswords() [][]byte {
-	accountsPasswordPath := viper.GetString("passphrases")
-
-	content, err := os.ReadFile(accountsPasswordPath)
-	if err != nil {
-		panic(err)
-	}
-
-	accountsPasswords := bytes.Split(content, []byte{'\n'})
-	return accountsPasswords
+	ctx            context.Context
+	dWalletsPath   string
+	ndWalletsPath  string
+	passphrasesIn  [][]byte
+	passphrasesOut [][]byte
+	accountDatas   map[string]AccountExtends
+	stores         []utils.DirkStore
+	peers          utils.Peers
+	wallet         utils.NDWallet
+	store          types.Store
 }
 
 func newCombineRuntime() (*CombineRuntime, error) {
-	var peers utils.Peers
 	cr := &CombineRuntime{}
 	var err error
 
+	var ndWalletConfig utils.NDWalletConfig
+	err = viper.UnmarshalKey("nd-wallets", &ndWalletConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	var dWalletConfig utils.DWalletConfig
+	err = viper.UnmarshalKey("distributed-wallets", &dWalletConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	cr.ctx = context.Background()
-	cr.distributedWalletsPath = viper.GetString("distributed-wallets")
-	cr.ndWalletsPath = viper.GetString("nd-wallets")
-	cr.passphrases = getAccountsPasswords()
+	cr.dWalletsPath = dWalletConfig.Path
+	cr.ndWalletsPath = ndWalletConfig.Path
+	cr.passphrasesIn, err = utils.GetAccountsPasswords(dWalletConfig.Passphrases)
+	if err != nil {
+		return nil, err
+	}
+	cr.passphrasesOut, err = utils.GetAccountsPasswords(ndWalletConfig.Passphrases)
+	if err != nil {
+		return nil, err
+	}
 	cr.accountDatas = make(map[string]AccountExtends)
-	cr.stores, err = utils.LoadStores(cr.ctx, cr.distributedWalletsPath, cr.passphrases)
+	cr.stores, err = utils.LoadStores(cr.ctx, cr.dWalletsPath, cr.passphrasesIn)
 	if err != nil {
-		return &CombineRuntime{}, err
+		return nil, err
 	}
 
-	err = viper.UnmarshalKey("peers", &peers)
-	if err != nil {
-		return &CombineRuntime{}, err
-	}
-
-	cr.peers = peers
+	cr.peers = dWalletConfig.Peers
 
 	return cr, nil
 }
 
 func (cr *CombineRuntime) createWalletAndStore() error {
-	cr.store = utils.CreateStore(cr.ndWalletsPath)
-	cr.wallet = utils.CreateNDWallet(cr.store)
+	var err error
+	cr.store, err = utils.CreateStore(cr.ndWalletsPath)
+	if err != nil {
+		return err
+	}
+	cr.wallet, err = utils.CreateNDWallet(cr.store)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -81,13 +88,23 @@ func (cr *CombineRuntime) checkSignature() error {
 			return err
 		}
 
-		initialSignature := bls.Sign(cr.ctx, account.Accounts)
+		initialSignature, err := bls.Sign(cr.ctx, account.Accounts)
+		if err != nil {
+			return err
+		}
 
-		finalAccount := utils.CreateNDAccount(cr.wallet, accountName, key, cr.passphrases[0])
+		finalAccount, err := utils.CreateNDAccount(cr.wallet, accountName, key, cr.passphrasesOut[0])
+		if err != nil {
+			return err
+		}
 
-		finalSignature := utils.AccountSign(cr.ctx, finalAccount, cr.passphrases)
+		finalSignature, err := utils.AccountSign(cr.ctx, finalAccount, cr.passphrasesOut)
+		if err != nil {
+			return err
+		}
 
-		if !bytes.Equal(finalSignature, initialSignature) {
+		err = bls.SignatureCompare(finalSignature, initialSignature)
+		if err != nil {
 			return err
 		}
 
@@ -97,8 +114,9 @@ func (cr *CombineRuntime) checkSignature() error {
 		}
 
 		for _, compositeKey := range account.CompositePubKeys {
-			if !bytes.Equal(compositeKey, pubkey) {
-				panic("test")
+			err = bls.CompositeKeysCompare(compositeKey, pubkey)
+			if err != nil {
+				return err
 			}
 
 		}
@@ -110,7 +128,10 @@ func (cr *CombineRuntime) storeUpdater() error {
 	for _, store := range cr.stores {
 		var participantID uint64
 		for id := range cr.peers {
-			peerExists, _ := regexp.MatchString(filepath.Base(store.Location)+":.*", cr.peers[id])
+			peerExists, err := regexp.MatchString(filepath.Base(store.Location)+":.*", cr.peers[id])
+			if err != nil {
+				return err
+			}
 			if !peerExists {
 				continue
 			}
@@ -118,12 +139,15 @@ func (cr *CombineRuntime) storeUpdater() error {
 
 			for _, wallet := range store.Wallets {
 				for account := range wallet.Accounts(cr.ctx) {
-					key, err := utils.GetAccountKey(cr.ctx, account, cr.passphrases)
+					key, err := utils.GetAccountKey(cr.ctx, account, cr.passphrasesOut)
 					if err != nil {
 						return err
 					}
 
-					initialSignature := utils.AccountSign(cr.ctx, account, cr.passphrases)
+					initialSignature, err := utils.AccountSign(cr.ctx, account, cr.passphrasesOut)
+					if err != nil {
+						return err
+					}
 					compositePubKey, err := utils.GetAccountCompositePubkey(account)
 					if err != nil {
 						return err

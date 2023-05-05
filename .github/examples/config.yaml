@@ -1,8 +1,12 @@
-passphrases: ./passphrases.txt
-distributed-wallets: DISTRIBUTED_WALLETS
-nd-wallets: ND_WALLETS
-signing-threshold: 2
-peers:
-  10: old1:9091
-  20: old2:9091
-  30: old3:9091
+distributed-wallets:
+  path: DISTRIBUTED_WALLETS
+  passphrases: ./passphrases.txt
+  threshold: 2
+  peers:
+    10: old1:9091
+    20: old2:9091
+    30: old3:9091
+nd-wallets:
+  path: ND_WALLETS
+  passphrases: ./passphrases.txt
+log-level: debug

@@ -1,28 +1,30 @@
 package split
 
-func Run() {
+func Run() error {
 	splitRuntime, err := newSplitRuntime()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = splitRuntime.createWallets()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = splitRuntime.loadWallets()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = splitRuntime.saveAccounts()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = splitRuntime.checkSignature()
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }

@@ -2,20 +2,21 @@ package bls
 
 import (
 	"context"
-	"log"
 
 	"github.com/herumi/bls-eth-go-binary/bls"
 	"github.com/p2p-org/dkc/utils"
 )
 
-func Split(ctx context.Context, key []byte, threshold uint32) (
-	masterSKs [][]byte,
-	masterPKs [][]byte,
-) {
+func Split(ctx context.Context, key []byte, threshold uint32) ([][]byte, [][]byte, error) {
 	var sk bls.SecretKey
-	sk.Deserialize(key)
-	masterPKs = append(masterPKs, sk.GetPublicKey().Serialize())
-	masterSKs = append(masterSKs, sk.Serialize())
+
+	err := sk.Deserialize(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	masterPKs := append([][]byte{}, sk.GetPublicKey().Serialize())
+	masterSKs := append([][]byte{}, sk.Serialize())
 
 	for i := 1; i < int(threshold); i++ {
 		var sk bls.SecretKey
@@ -24,18 +25,22 @@ func Split(ctx context.Context, key []byte, threshold uint32) (
 		masterPKs = append(masterPKs, sk.GetPublicKey().Serialize())
 	}
 
-	return
+	return masterSKs, masterPKs, nil
 }
 
-func Sign(ctx context.Context, accounts []utils.Account) []byte {
+func Sign(ctx context.Context, accounts []utils.Account) ([]byte, error) {
 	var subSignatures []bls.Sign
 	var subIDs []bls.ID
 	var sig bls.Sign
 
 	for _, account := range accounts {
+		blsID, err := newBlsID(account.ID)
+		if err != nil {
+			return nil, err
+		}
 		subIDs = append(
 			subIDs,
-			*newBlsID(account.ID),
+			*blsID,
 		)
 
 		var peerSig bls.Sign
@@ -47,19 +52,23 @@ func Sign(ctx context.Context, accounts []utils.Account) []byte {
 	}
 
 	if err := sig.Recover(subSignatures, subIDs); err != nil {
-		panic("rap")
+		return nil, err
 	}
 
-	return sig.Serialize()
+	return sig.Serialize(), nil
 }
 
 func Recover(ctx context.Context, accounts []utils.Account) ([]byte, error) {
 	var subIDs []bls.ID
 	var subSKs []bls.SecretKey
 	for _, account := range accounts {
+		blsID, err := newBlsID(account.ID)
+		if err != nil {
+			return nil, err
+		}
 		subIDs = append(
 			subIDs,
-			*newBlsID(account.ID),
+			*blsID,
 		)
 
 		var mk bls.SecretKey
@@ -70,29 +79,36 @@ func Recover(ctx context.Context, accounts []utils.Account) ([]byte, error) {
 
 	var rk bls.SecretKey
 	if err := rk.Recover(subSKs, subIDs); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return rk.Serialize(), nil
 }
 
 func SetupParticipants(masterSKs [][]byte, masterPKs [][]byte, ids []uint64, threshold int) (
-	accounts []utils.Account,
+	[]utils.Account, error,
 ) {
 	var mSKs []bls.SecretKey
+	var accounts = []utils.Account{}
 
 	for _, s := range masterSKs {
 		var sk bls.SecretKey
-		sk.Deserialize(s)
+		err := sk.Deserialize(s)
+		if err != nil {
+			return nil, err
+		}
 		mSKs = append(mSKs, sk)
 	}
 
 	for i := 0; i < threshold; i++ {
-		id := newBlsID(ids[i])
+		id, err := newBlsID(ids[i])
+		if err != nil {
+			return nil, err
+		}
 
 		var sk bls.SecretKey
 		if err := sk.Set(mSKs, id); err != nil {
-			log.Fatalf("Failed to Set secret key: %s", err)
+			return nil, err
 		}
 
 		accounts = append(accounts,
@@ -103,5 +119,5 @@ func SetupParticipants(masterSKs [][]byte, masterPKs [][]byte, ids []uint64, thr
 			})
 	}
 
-	return
+	return accounts, nil
 }

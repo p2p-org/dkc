@@ -1,23 +1,25 @@
 package combine
 
-func Run() {
+func Run() error {
 	combineRuntime, err := newCombineRuntime()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = combineRuntime.createWalletAndStore()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = combineRuntime.storeUpdater()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = combineRuntime.checkSignature()
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }

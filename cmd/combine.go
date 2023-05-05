@@ -9,8 +9,12 @@ var combineCmd = &cobra.Command{
 	Use:   "combine",
 	Short: "Combine distributed wallets to keystore",
 	Long:  `Allow to combine distributed wallets to keystore`,
-	Run: func(cmd *cobra.Command, args []string) {
-		combine.Run()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		err := combine.Run()
+		if err != nil {
+			return err
+		}
+		return nil
 	},
 }
 

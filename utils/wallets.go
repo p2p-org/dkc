@@ -2,8 +2,13 @@ package utils
 
 import (
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	e2wallet "github.com/wealdtech/go-eth2-wallet"
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
+)
+
+const (
+	errorFailedToCreateWalletWrapper = "failed to create wallet"
 )
 
 type NDWallet interface {
@@ -16,31 +21,31 @@ type DWallet interface {
 	types.WalletLocker
 }
 
-func CreateNDWallet(store types.Store) (ndWallet NDWallet) {
+func CreateNDWallet(store types.Store) (NDWallet, error) {
 	wallet, err := createWallet(store, "non-deterministic")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	ndWallet = wallet.(NDWallet)
+	ndWallet := wallet.(NDWallet)
 
-	return
+	return ndWallet, err
 }
 
-func CreateDWallet(store types.Store) (dWallet DWallet) {
+func CreateDWallet(store types.Store) (DWallet, error) {
 	wallet, err := createWallet(store, "distributed")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	dWallet = wallet.(DWallet)
+	dWallet := wallet.(DWallet)
 
-	return
+	return dWallet, nil
 }
 
-func createWallet(store types.Store, wType string) (wallet types.Wallet, err error) {
+func createWallet(store types.Store, wType string) (types.Wallet, error) {
 	e2wallet.UseStore(store)
-	wallet, err = e2wallet.CreateWallet(uuid.New().String(), e2wallet.WithType(wType))
+	wallet, err := e2wallet.CreateWallet(uuid.New().String(), e2wallet.WithType(wType))
 	if err != nil {
-		return
+		return nil, errors.Wrap(err, errorFailedToCreateWalletWrapper)
 	}
-	return
+	return wallet, nil
 }

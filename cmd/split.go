@@ -9,8 +9,12 @@ var splitCmd = &cobra.Command{
 	Use:   "split",
 	Short: "Split keystore to distributed wallets",
 	Long:  `Allow to split keystore to distributed wallets`,
-	Run: func(cmd *cobra.Command, args []string) {
-		split.Run()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		err := split.Run()
+		if err != nil {
+			return err
+		}
+		return nil
 	},
 }
 

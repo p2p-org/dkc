@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
 	"strings"
 
-	"github.com/rs/zerolog"
+	"github.com/p2p-org/dkc/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	e2types "github.com/wealdtech/go-eth2-types/v2"
@@ -19,31 +17,27 @@ var rootCmd = &cobra.Command{
 	Use:   "dkc",
 	Short: "Dirk Key Converter",
 	Long:  `Allow to split and combine keystores and distributed wallets in Dirk`,
-	//Run: func(cmd *cobra.Command, args []string) {},
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+		utils.Log.Fatal().Err(err)
 	}
 }
 
 func init() {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-
-	if err := e2types.InitBLS(); err != nil {
-		fmt.Println(err)
-		panic(err)
-	}
 
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "config file")
 
-	rootCmd.PersistentFlags().String("nd-wallets", "./nd-wallets", "Directory with keystores")
-	viper.BindPFlag("keystoreDir", rootCmd.PersistentFlags().Lookup("keystore-dir"))
+	rootCmd.PersistentFlags().String("log-level", "INFO", "Log Level")
+	viper.BindPFlag("logLevel", rootCmd.PersistentFlags().Lookup("log-level"))
 
-	rootCmd.PersistentFlags().String("distributed-wallets", "./distributed-wallets", "Directory with dirk wallets")
-	viper.BindPFlag("walletDir", rootCmd.PersistentFlags().Lookup("wallet-dir"))
+	utils.InitLogging()
+
+	if err := e2types.InitBLS(); err != nil {
+		utils.Log.Fatal().Err(err)
+	}
 }
 func initConfig() {
 	viper.SetConfigFile(cfgFile)
@@ -52,7 +46,6 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
+	viper.ReadInConfig()
+
 }
