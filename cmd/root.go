@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/p2p-org/dkc/utils"
@@ -16,12 +18,14 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "dkc",
 	Short: "Dirk Key Converter",
-	Long:  `Allow to split and combine keystores and distributed wallets in Dirk`,
+	Long:  `Allow to split and combine keystores and distributed wallets for Dirk`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	},
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		utils.Log.Fatal().Err(err)
+		os.Exit(1)
 	}
 }
 
@@ -31,12 +35,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "config file")
 
 	rootCmd.PersistentFlags().String("log-level", "INFO", "Log Level")
-	viper.BindPFlag("logLevel", rootCmd.PersistentFlags().Lookup("log-level"))
-
-	utils.InitLogging()
+	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
 
 	if err := e2types.InitBLS(); err != nil {
-		utils.Log.Fatal().Err(err)
+		utils.Log.Fatal().Err(err).Send()
 	}
 }
 func initConfig() {
@@ -45,7 +47,11 @@ func initConfig() {
 	viper.SetEnvPrefix("DKC")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
+	if err := viper.ReadInConfig(); err == nil {
+		utils.InitLogging()
 
-	viper.ReadInConfig()
-
+		msg := fmt.Sprintf("using config file: %s", viper.ConfigFileUsed())
+		utils.Log.Info().Msg("starting DKC")
+		utils.Log.Info().Msg(msg)
+	}
 }

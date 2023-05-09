@@ -2,6 +2,8 @@ package split
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"regexp"
 
 	"github.com/p2p-org/dkc/utils"
@@ -34,14 +36,26 @@ func newSplitRuntime() (*SplitRuntime, error) {
 	sr := &SplitRuntime{}
 	var err error
 
+	utils.LogSplit.Debug().Msg("validating nd-wallets config field")
 	var ndWalletConfig utils.NDWalletConfig
 	err = viper.UnmarshalKey("nd-wallets", &ndWalletConfig)
 	if err != nil {
 		return nil, err
 	}
 
+	err = ndWalletConfig.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	utils.LogSplit.Debug().Msg("validating d-wallets config field")
 	var dWalletConfig utils.DWalletConfig
 	err = viper.UnmarshalKey("distributed-wallets", &dWalletConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	err = dWalletConfig.Validate()
 	if err != nil {
 		return nil, err
 	}
@@ -50,10 +64,12 @@ func newSplitRuntime() (*SplitRuntime, error) {
 	sr.dWalletsPath = dWalletConfig.Path
 	sr.ndWalletsPath = ndWalletConfig.Path
 	sr.threshold = dWalletConfig.Threshold
+	utils.LogSplit.Debug().Msg(fmt.Sprintf("getting input passwords from %s", ndWalletConfig.Passphrases))
 	sr.passphrasesIn, err = utils.GetAccountsPasswords(ndWalletConfig.Passphrases)
 	if err != nil {
 		return nil, err
 	}
+	utils.LogSplit.Debug().Msg(fmt.Sprintf("getting input passwords from %s", dWalletConfig.Passphrases))
 	sr.passphrasesOut, err = utils.GetAccountsPasswords(dWalletConfig.Passphrases)
 	if err != nil {
 		return nil, err
@@ -74,11 +90,13 @@ func (sr *SplitRuntime) createWallets() error {
 		if err != nil {
 			return err
 		}
+		utils.LogSplit.Debug().Msg(fmt.Sprintf("creating store for peer: %d", id))
 		storePath := sr.dWalletsPath + "/" + res.ReplaceAllString(peer, "")
 		store, err := utils.CreateStore(storePath)
 		if err != nil {
 			return err
 		}
+		utils.LogSplit.Debug().Msg(fmt.Sprintf("creating wallet for peer %d", id))
 		wallet, err := utils.CreateDWallet(store)
 		if err != nil {
 			return err
@@ -90,32 +108,39 @@ func (sr *SplitRuntime) createWallets() error {
 }
 
 func (sr *SplitRuntime) loadWallets() error {
+	utils.LogSplit.Debug().Msg(fmt.Sprintf("load store %s", sr.ndWalletsPath))
 	s, err := utils.LoadStore(sr.ctx, sr.ndWalletsPath, sr.passphrasesIn)
 	if err != nil {
 		return err
 	}
 
 	for _, w := range s.Wallets {
+		utils.LogSplit.Debug().Msg(fmt.Sprintf("load wallet %s ", w.Name()))
 		for account := range w.Accounts(sr.ctx) {
+			utils.LogSplit.Debug().Msg(fmt.Sprintf("get private key for account %s ", account.Name()))
 			key, err := utils.GetAccountKey(sr.ctx, account, sr.passphrasesIn)
 			if err != nil {
 				return err
 			}
+			utils.LogSplit.Debug().Msg(fmt.Sprintf("get pub key for account %s ", account.Name()))
 			pubKey, err := utils.GetAccountPubkey(account)
 			if err != nil {
 				return err
 			}
 
+			utils.LogSplit.Debug().Msg(fmt.Sprintf("signing test string for account %s ", account.Name()))
 			initialSignature, err := utils.AccountSign(sr.ctx, account, sr.passphrasesIn)
 			if err != nil {
 				return err
 			}
 
+			utils.LogSplit.Debug().Msg(fmt.Sprintf("bls split key for account %s ", account.Name()))
 			masterSKs, masterPKs, err := bls.Split(sr.ctx, key, sr.threshold)
 			if err != nil {
 				return err
 			}
 
+			utils.LogSplit.Debug().Msg(fmt.Sprintf("setup bls participants for account %s ", account.Name()))
 			participants, err := bls.SetupParticipants(masterSKs, masterPKs, sr.peersIDs, len(sr.peers))
 			if err != nil {
 				return err
@@ -135,7 +160,9 @@ func (sr *SplitRuntime) loadWallets() error {
 
 func (sr *SplitRuntime) saveAccounts() error {
 	for accountName, account := range sr.accountDatas {
+		utils.LogSplit.Debug().Msg(fmt.Sprintf("saving account %s ", accountName))
 		for i, acc := range account.Accounts {
+			utils.LogSplit.Debug().Msg(fmt.Sprintf("creating account with id %d ", acc.ID))
 			finalAccount, err := utils.CreateDAccount(
 				sr.walletsMap[acc.ID],
 				accountName,
@@ -149,10 +176,12 @@ func (sr *SplitRuntime) saveAccounts() error {
 				return err
 			}
 
+			utils.LogSplit.Debug().Msg(fmt.Sprintf("generating signature for account with id %d ", acc.ID))
 			account.Accounts[i].Signature, err = utils.AccountSign(sr.ctx, finalAccount, sr.passphrasesOut)
 			if err != nil {
 				return err
 			}
+			utils.LogSplit.Debug().Msg(fmt.Sprintf("getting composite pub key for account with id %d ", acc.ID))
 			compositePubKey, err := utils.GetAccountCompositePubkey(finalAccount)
 			if err != nil {
 				return err
@@ -166,16 +195,19 @@ func (sr *SplitRuntime) saveAccounts() error {
 
 func (sr *SplitRuntime) checkSignature() error {
 	for _, account := range sr.accountDatas {
+		utils.LogSplit.Debug().Msg(fmt.Sprintf("generating bls signature for pub key %s", hex.EncodeToString(account.PubKey)))
 		finalSignature, err := bls.Sign(sr.ctx, account.Accounts)
 		if err != nil {
 			return err
 		}
 
+		utils.LogSplit.Debug().Msg(fmt.Sprintf("compare bls signatures for pub key %s", hex.EncodeToString(account.PubKey)))
 		err = bls.SignatureCompare(finalSignature, account.InitialSignature)
 		if err != nil {
 			return err
 		}
 
+		utils.LogSplit.Debug().Msg(fmt.Sprintf("compare composite pubkeys for pub key %s", hex.EncodeToString(account.PubKey)))
 		for _, compositePubKey := range account.CompositePubKeys {
 			err = bls.CompositeKeysCompare(compositePubKey, account.PubKey)
 			if err != nil {

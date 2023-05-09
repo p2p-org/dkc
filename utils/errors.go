@@ -1,11 +1,19 @@
 package utils
 
 const (
-	ErrorPubKeyMatch          = "Pubkeys don't match"
-	ErrorSignatureMatch       = "Signature doesn't match"
-	ErrorNoPrivateKeyMsg      = "Account does not provide it's Private Key"
-	ErrorAccountIsNotUnlocked = "Account is not unlocked"
+	ErrorPubKeyMatch          = "pubkeys don't match"
+	ErrorSignatureMatch       = "signature doesn't match"
+	ErrorNoPrivateKeyMsg      = "account does not provide it's private key"
+	ErrorAccountIsNotUnlocked = "account is not unlocked"
+	ErrorPassphrasesField     = "passphrases field is empty"
+	ErrorPathField            = "path field is empty"
+	ErrorPeersField           = "peers field is empty"
+	ErrorThresholdField       = "threshold field is empty"
+	ErrorPassphraseEmpty      = "passphrase is empty"
+	ErrorNotEnoughPeers       = "current peer value is not enough for threshold value"
 
+	ErrorNDWalletStructWrapper       = "failed to validate NDWalletStruct"
+	ErrorDWalletStructWrapper        = "failed to validate DWalletStruct"
 	ErrorFailedToCreateWalletWrapper = "failed to create wallet"
 	ErrorWalletDirWrapper            = "failed to get wallet dir"
 	ErrorLoadStoreWrapper            = "can't load store"

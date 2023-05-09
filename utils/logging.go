@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"os"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -10,9 +11,13 @@ import (
 
 var Log zerolog.Logger
 
-func InitLogging() {
+var LogSplit zerolog.Logger
+var LogCombine zerolog.Logger
 
-	Log = zerologger.With().Logger().Level(logLevel(viper.GetString("log-level")))
+func InitLogging() {
+	Log = zerologger.With().Logger().Level(logLevel(viper.GetString("log-level"))).Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	LogSplit = Log.With().Str("cmd", "split").Logger()
+	LogCombine = Log.With().Str("cmd", "combine").Logger()
 
 }
 
