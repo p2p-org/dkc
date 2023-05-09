@@ -1,5 +1,5 @@
 distributed-wallets:
-  path: ./walletsnew
+  path: DISTRIBUTED_WALLETS
   passphrases: ./passphrases.txt
   threshold: 2
   peers:
@@ -7,6 +7,6 @@ distributed-wallets:
     20: old2:9091
     30: old3:9091
 nd-wallets:
-  path: ./tests
+  path: ND_WALLETS
   passphrases: ./passphrases.txt
 log-level: debug
