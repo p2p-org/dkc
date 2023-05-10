@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -50,8 +49,7 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		utils.InitLogging()
 
-		msg := fmt.Sprintf("using config file: %s", viper.ConfigFileUsed())
 		utils.Log.Info().Msg("starting DKC")
-		utils.Log.Info().Msg(msg)
+		utils.Log.Info().Msgf("using config file: %s", viper.ConfigFileUsed())
 	}
 }

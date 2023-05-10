@@ -91,7 +91,7 @@ func AccountSign(ctx context.Context, acc types.Account, passphrases [][]byte) (
 func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]byte) ([]byte, error) {
 	privateKeyProvider, isPrivateKeyProvider := account.(types.AccountPrivateKeyProvider)
 	if !isPrivateKeyProvider {
-		err := errors.New(ErrorNoPrivateKeyMsg)
+		err := ErrorNoPrivateKeyMsg
 		return nil, err
 	}
 
@@ -111,7 +111,7 @@ func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]b
 func GetAccountCompositePubkey(account types.Account) ([]byte, error) {
 	compositePublicKeyProvider, isCompositePublicKeyProvider := account.(types.AccountCompositePublicKeyProvider)
 	if !isCompositePublicKeyProvider {
-		err := errors.New(ErrorNoPrivateKeyMsg)
+		err := ErrorNoPrivateKeyMsg
 		return nil, err
 	}
 
@@ -141,7 +141,7 @@ func unlockAccount(ctx context.Context, acc types.Account, passphrases [][]byte)
 				}
 			}
 			if !unlocked {
-				err = errors.New(ErrorAccountIsNotUnlocked)
+				err = ErrorAccountIsNotUnlocked
 				return nil, err
 			}
 		}

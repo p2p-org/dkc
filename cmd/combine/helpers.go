@@ -2,7 +2,6 @@ package combine
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"regexp"
 
@@ -62,18 +61,18 @@ func newCombineRuntime() (*CombineRuntime, error) {
 	cr.ctx = context.Background()
 	cr.dWalletsPath = dWalletConfig.Path
 	cr.ndWalletsPath = ndWalletConfig.Path
-	utils.LogCombine.Debug().Msg(fmt.Sprintf("getting input passwords form file %s", dWalletConfig.Passphrases))
+	utils.LogCombine.Debug().Msgf("getting input passwords form file %s", dWalletConfig.Passphrases)
 	cr.passphrasesIn, err = utils.GetAccountsPasswords(dWalletConfig.Passphrases)
 	if err != nil {
 		return nil, err
 	}
-	utils.LogCombine.Debug().Msg(fmt.Sprintf("getting output passwords form file %s", ndWalletConfig.Passphrases))
+	utils.LogCombine.Debug().Msgf("getting output passwords form file %s", ndWalletConfig.Passphrases)
 	cr.passphrasesOut, err = utils.GetAccountsPasswords(ndWalletConfig.Passphrases)
 	if err != nil {
 		return nil, err
 	}
 	cr.accountDatas = make(map[string]AccountExtends)
-	utils.LogCombine.Debug().Msg(fmt.Sprintf("loading stores form %s", cr.dWalletsPath))
+	utils.LogCombine.Debug().Msgf("loading stores form %s", cr.dWalletsPath)
 	cr.stores, err = utils.LoadStores(cr.ctx, cr.dWalletsPath, cr.passphrasesIn)
 	if err != nil {
 		return nil, err
@@ -86,7 +85,7 @@ func newCombineRuntime() (*CombineRuntime, error) {
 
 func (cr *CombineRuntime) createWalletAndStore() error {
 	var err error
-	utils.LogCombine.Debug().Msg(fmt.Sprintf("creating store %s", cr.ndWalletsPath))
+	utils.LogCombine.Debug().Msgf("creating store %s", cr.ndWalletsPath)
 	cr.store, err = utils.CreateStore(cr.ndWalletsPath)
 	if err != nil {
 		return err
@@ -101,43 +100,43 @@ func (cr *CombineRuntime) createWalletAndStore() error {
 
 func (cr *CombineRuntime) checkSignature() error {
 	for accountName, account := range cr.accountDatas {
-		utils.LogCombine.Debug().Msg(fmt.Sprintf("recover private key for account %s", accountName))
+		utils.LogCombine.Debug().Msgf("recover private key for account %s", accountName)
 		key, err := bls.Recover(cr.ctx, account.Accounts)
 		if err != nil {
 			return err
 		}
 
-		utils.LogCombine.Debug().Msg(fmt.Sprintf("bls sing for account %s", accountName))
+		utils.LogCombine.Debug().Msgf("bls sing for account %s", accountName)
 		initialSignature, err := bls.Sign(cr.ctx, account.Accounts)
 		if err != nil {
 			return err
 		}
 
-		utils.LogCombine.Debug().Msg(fmt.Sprintf("creating nd account for account %s", accountName))
+		utils.LogCombine.Debug().Msgf("creating nd account for account %s", accountName)
 		finalAccount, err := utils.CreateNDAccount(cr.wallet, accountName, key, cr.passphrasesOut[0])
 		if err != nil {
 			return err
 		}
 
-		utils.LogCombine.Debug().Msg(fmt.Sprintf("signing message for account %s", accountName))
+		utils.LogCombine.Debug().Msgf("signing message for account %s", accountName)
 		finalSignature, err := utils.AccountSign(cr.ctx, finalAccount, cr.passphrasesOut)
 		if err != nil {
 			return err
 		}
 
-		utils.LogCombine.Debug().Msg(fmt.Sprintf("comapare signatures for account %s", accountName))
+		utils.LogCombine.Debug().Msgf("comapare signatures for account %s", accountName)
 		err = bls.SignatureCompare(finalSignature, initialSignature)
 		if err != nil {
 			return err
 		}
 
-		utils.LogCombine.Debug().Msg(fmt.Sprintf("get pub key for account %s", accountName))
+		utils.LogCombine.Debug().Msgf("get pub key for account %s", accountName)
 		pubkey, err := utils.GetAccountPubkey(finalAccount)
 		if err != nil {
 			return err
 		}
 
-		utils.LogCombine.Debug().Msg(fmt.Sprintf("get composite pub key for account %s", accountName))
+		utils.LogCombine.Debug().Msgf("get composite pub key for account %s", accountName)
 		for _, compositeKey := range account.CompositePubKeys {
 			err = bls.CompositeKeysCompare(compositeKey, pubkey)
 			if err != nil {
@@ -163,20 +162,20 @@ func (cr *CombineRuntime) storeUpdater() error {
 			participantID = id
 
 			for _, wallet := range store.Wallets {
-				utils.LogCombine.Debug().Msg(fmt.Sprintf("loading data for wallet %s", wallet.Name()))
+				utils.LogCombine.Debug().Msgf("loading data for wallet %s", wallet.Name())
 				for account := range wallet.Accounts(cr.ctx) {
-					utils.LogCombine.Debug().Msg(fmt.Sprintf("get private key for account %s", account.Name()))
+					utils.LogCombine.Debug().Msgf("get private key for account %s", account.Name())
 					key, err := utils.GetAccountKey(cr.ctx, account, cr.passphrasesOut)
 					if err != nil {
 						return err
 					}
 
-					utils.LogCombine.Debug().Msg(fmt.Sprintf("sign message from account %s", account.Name()))
+					utils.LogCombine.Debug().Msgf("sign message from account %s", account.Name())
 					initialSignature, err := utils.AccountSign(cr.ctx, account, cr.passphrasesOut)
 					if err != nil {
 						return err
 					}
-					utils.LogCombine.Debug().Msg(fmt.Sprintf("get composite pub key for account %s", account.Name()))
+					utils.LogCombine.Debug().Msgf("get composite pub key for account %s", account.Name())
 					compositePubKey, err := utils.GetAccountCompositePubkey(account)
 					if err != nil {
 						return err

@@ -28,7 +28,7 @@ func GetAccountsPasswords(path string) ([][]byte, error) {
 
 	accountsPasswords := bytes.Split(content, []byte{'\n'})
 	if len(accountsPasswords) == 0 {
-		err := errors.New(ErrorPassphrasesField)
+		err := ErrorPassphrasesField
 		return nil, errors.Wrap(err, ErrorDWalletStructWrapper)
 	}
 	return accountsPasswords, nil
@@ -36,12 +36,12 @@ func GetAccountsPasswords(path string) ([][]byte, error) {
 
 func (data *NDWalletConfig) Validate() error {
 	if data.Path == "" {
-		err := errors.New(ErrorPathField)
+		err := ErrorPathField
 		return errors.Wrap(err, ErrorNDWalletStructWrapper)
 	}
 
 	if data.Passphrases == "" {
-		err := errors.New(ErrorPassphrasesField)
+		err := ErrorPassphrasesField
 		return errors.Wrap(err, ErrorNDWalletStructWrapper)
 	}
 
@@ -50,27 +50,27 @@ func (data *NDWalletConfig) Validate() error {
 
 func (data *DWalletConfig) Validate() error {
 	if data.Path == "" {
-		err := errors.New(ErrorPathField)
+		err := ErrorPathField
 		return errors.Wrap(err, ErrorDWalletStructWrapper)
 	}
 
 	if data.Passphrases == "" {
-		err := errors.New(ErrorPassphrasesField)
+		err := ErrorPassphrasesField
 		return errors.Wrap(err, ErrorDWalletStructWrapper)
 	}
 
 	if len(data.Peers) == 0 {
-		err := errors.New(ErrorPeersField)
+		err := ErrorPeersField
 		return errors.Wrap(err, ErrorDWalletStructWrapper)
 	}
 
 	if data.Threshold == 0 {
-		err := errors.New(ErrorThresholdField)
+		err := ErrorThresholdField
 		return errors.Wrap(err, ErrorDWalletStructWrapper)
 	}
 
 	if len(data.Peers) < int(data.Threshold) {
-		err := errors.New(ErrorNotEnoughPeers)
+		err := ErrorNotEnoughPeers
 		return errors.Wrap(err, ErrorDWalletStructWrapper)
 	}
 
