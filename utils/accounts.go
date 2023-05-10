@@ -2,37 +2,40 @@ package utils
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/pkg/errors"
 
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
-const signingString = "bkeCE2vRuTxxc5RpzrvLzoU5EgulV7uk3zMnt5MP9MgsXBaif9mUQcf7rZGC5mNj9lBqQ2s"
+const (
+	signingString = "bkeCE2vRuTxxc5RpzrvLzoU5EgulV7uk3zMnt5MP9MgsXBaif9mUQcf7rZGC5mNj9lBqQ2s"
+)
 
 func CreateNDAccount(
 	wallet NDWallet,
 	name string,
 	masterSK []byte,
 	passphrase []byte,
-) (account types.Account) {
+) (types.Account, error) {
 
 	err := wallet.Unlock(context.Background(), nil)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, ErrorUnlockWrapper)
 	}
 
 	defer wallet.Lock(context.Background())
 
-	account, err = wallet.ImportAccount(context.Background(),
+	account, err := wallet.ImportAccount(context.Background(),
 		name,
 		masterSK,
 		passphrase,
 	)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, ErrorImportWrapper)
 	}
 
-	return
+	return account, nil
 }
 
 func CreateDAccount(
@@ -43,16 +46,16 @@ func CreateDAccount(
 	threshold uint32,
 	peers map[uint64]string,
 	passphrase []byte,
-) (account types.Account) {
+) (types.Account, error) {
 
 	err := wallet.Unlock(context.Background(), nil)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, ErrorUnlockWrapper)
 	}
 
 	defer wallet.(types.WalletLocker).Lock(context.Background())
 
-	account, err = wallet.ImportDistributedAccount(context.Background(),
+	account, err := wallet.ImportDistributedAccount(context.Background(),
 		name,
 		masterSK,
 		threshold,
@@ -60,39 +63,46 @@ func CreateDAccount(
 		peers,
 		passphrase)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, ErrorImportWrapper)
 	}
 
-	return
+	return account, nil
 }
 
-func AccountSign(ctx context.Context, acc types.Account, passphrases [][]byte) []byte {
-	account := unlockAccount(ctx, acc, passphrases)
-	accountSigner := account.(types.AccountSigner)
+func AccountSign(ctx context.Context, acc types.Account, passphrases [][]byte) ([]byte, error) {
+	account, err := unlockAccount(ctx, acc, passphrases)
+	if err != nil {
+		return nil, errors.Wrap(err, ErrorUnlockWrapper)
+	}
 
+	accountSigner := account.(types.AccountSigner)
 	signedData, err := accountSigner.Sign(ctx, []byte(signingString))
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, ErrorAccountSign)
 	}
 
 	if !signedData.Verify([]byte(signingString), acc.PublicKey()) {
-		panic("rap")
+		return nil, errors.Wrap(err, ErrorSignVerify)
 	}
 
-	return signedData.Marshal()
+	return signedData.Marshal(), nil
 }
 
 func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]byte) ([]byte, error) {
 	privateKeyProvider, isPrivateKeyProvider := account.(types.AccountPrivateKeyProvider)
 	if !isPrivateKeyProvider {
-		fmt.Println("account does not provide its private key")
+		err := ErrorNoPrivateKeyMsg
+		return nil, err
 	}
 
-	unlockAccount(ctx, account, passphrases)
+	_, err := unlockAccount(ctx, account, passphrases)
+	if err != nil {
+		return nil, err
+	}
 
 	key, err := privateKeyProvider.PrivateKey(ctx)
 	if err != nil {
-		fmt.Println(err, "failed to obtain private key")
+		return nil, err
 	}
 
 	return key.Marshal(), nil
@@ -101,7 +111,8 @@ func GetAccountKey(ctx context.Context, account types.Account, passphrases [][]b
 func GetAccountCompositePubkey(account types.Account) ([]byte, error) {
 	compositePublicKeyProvider, isCompositePublicKeyProvider := account.(types.AccountCompositePublicKeyProvider)
 	if !isCompositePublicKeyProvider {
-		fmt.Println("account does not provide its private key")
+		err := ErrorNoPrivateKeyMsg
+		return nil, err
 	}
 
 	pubKey := compositePublicKeyProvider.CompositePublicKey()
@@ -109,16 +120,17 @@ func GetAccountCompositePubkey(account types.Account) ([]byte, error) {
 	return pubKey.Marshal(), nil
 }
 
-func GetAccountPubkey(account types.Account) ([]byte, error) {
-	return account.PublicKey().Marshal(), nil
+func GetAccountPubkey(account types.Account) (data []byte, err error) {
+	data = account.PublicKey().Marshal()
+	return
 }
 
-func unlockAccount(ctx context.Context, acc types.Account, passphrases [][]byte) (account types.Account) {
-	account = acc
+func unlockAccount(ctx context.Context, acc types.Account, passphrases [][]byte) (types.Account, error) {
+	account := acc
 	if locker, isLocker := account.(types.AccountLocker); isLocker {
 		unlocked, err := locker.IsUnlocked(ctx)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		if !unlocked {
 			for _, passphrase := range passphrases {
@@ -129,10 +141,11 @@ func unlockAccount(ctx context.Context, acc types.Account, passphrases [][]byte)
 				}
 			}
 			if !unlocked {
-				panic(err)
+				err = ErrorAccountIsNotUnlocked
+				return nil, err
 			}
 		}
 	}
 
-	return
+	return account, nil
 }

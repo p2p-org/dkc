@@ -1,23 +1,35 @@
 package combine
 
-func Run() {
+import "github.com/p2p-org/dkc/utils"
+
+func Run() error {
+	utils.LogCombine.Info().Msg("validating config")
 	combineRuntime, err := newCombineRuntime()
 	if err != nil {
-		panic(err)
+		utils.LogCombine.Err(err).Send()
+		return err
 	}
 
+	utils.LogCombine.Info().Msg("creating wallets")
 	err = combineRuntime.createWalletAndStore()
 	if err != nil {
-		panic(err)
+		utils.LogCombine.Err(err).Send()
+		return err
 	}
 
+	utils.LogCombine.Info().Msg("updating stores")
 	err = combineRuntime.storeUpdater()
 	if err != nil {
-		panic(err)
+		utils.LogCombine.Err(err).Send()
+		return err
 	}
 
+	utils.LogCombine.Info().Msg("checking signatures")
 	err = combineRuntime.checkSignature()
 	if err != nil {
-		panic(err)
+		utils.LogCombine.Err(err).Send()
+		return err
 	}
+
+	return nil
 }

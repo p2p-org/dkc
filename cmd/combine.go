@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/p2p-org/dkc/cmd/combine"
+	"github.com/p2p-org/dkc/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -10,7 +11,11 @@ var combineCmd = &cobra.Command{
 	Short: "Combine distributed wallets to keystore",
 	Long:  `Allow to combine distributed wallets to keystore`,
 	Run: func(cmd *cobra.Command, args []string) {
-		combine.Run()
+		utils.LogCombine.Info().Msg("starting combine fucntion")
+		err := combine.Run()
+		if err != nil {
+			utils.LogCombine.Fatal().Err(nil).Send()
+		}
 	},
 }
 

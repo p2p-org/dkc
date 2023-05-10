@@ -23,9 +23,9 @@ type Account struct {
 	Signature []byte
 }
 
-func CreateStore(path string) (store types.Store) {
-	store = filesystem.New(filesystem.WithLocation(path))
-	return
+func CreateStore(path string) (types.Store, error) {
+	store := filesystem.New(filesystem.WithLocation(path))
+	return store, nil
 }
 
 func LoadStores(ctx context.Context, walletDir string, passphrases [][]byte) ([]DirkStore, error) {
@@ -33,13 +33,13 @@ func LoadStores(ctx context.Context, walletDir string, passphrases [][]byte) ([]
 
 	dirs, err := ioutil.ReadDir(walletDir)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get wallet dir")
+		return nil, errors.Wrap(err, ErrorWalletDirWrapper)
 	}
 	for _, f := range dirs {
 		if f.IsDir() {
 			store, err := LoadStore(ctx, walletDir+"/"+f.Name(), passphrases)
 			if err != nil {
-				return nil, errors.Wrap(err, "can't load store")
+				return nil, errors.Wrap(err, ErrorLoadStoreWrapper)
 			}
 			stores = append(stores, *store)
 		}
@@ -53,7 +53,7 @@ func LoadStore(ctx context.Context, location string, passphrases [][]byte) (*Dir
 	var wallets []types.Wallet
 	store := filesystem.New(filesystem.WithLocation(location))
 	if err := e2wallet.UseStore(store); err != nil {
-		return nil, errors.Wrap(err, "failed to use store")
+		return nil, errors.Wrap(err, ErrorUseStoreWrapper)
 	}
 	for wallet := range e2wallet.Wallets() {
 		wallets = append(wallets, wallet)
