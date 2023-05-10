@@ -11,7 +11,7 @@ var splitCmd = &cobra.Command{
 	Short: "Split keystore to distributed wallets",
 	Long:  `Allow to split keystore to distributed wallets`,
 	Run: func(cmd *cobra.Command, args []string) {
-		utils.LogSplit.Info().Msg("starting split fucntion")
+		utils.LogSplit.Info().Msg("starting split function")
 		err := split.Run()
 		if err != nil {
 			utils.LogSplit.Fatal().Err(nil).Send()

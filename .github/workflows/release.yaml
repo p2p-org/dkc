@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: "Setup Go"
+      uses: actions/setup-go@v4
+      with:
+        go-version-file: './go.mod'
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Set env
+      run: |
+       # Release tag comes from the github reference.
+       RELEASE_TAG=$(echo ${GITHUB_REF} | sed -e 's!.*/!!')
+       echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
+       echo "::set-output name=RELEASE_TAG::${RELEASE_TAG}"
+       # Ensure the release tag has expected format.
+       echo ${RELEASE_TAG} | grep -q '^v' || exit 1
+       # Release version is same as release tag without leading 'v'.
+       RELEASE_VERSION=$(echo ${GITHUB_REF} | sed -e 's!.*/v!!')
+       echo "RELEASE_VERSION=${RELEASE_VERSION}" >> $GITHUB_ENV
+       echo "::set-output name=RELEASE_VERSION::${RELEASE_VERSION}"
+
+    - name: Compile For x86_64 Linux
+      run: |
+       GOOS=linux GOARCH=amd64 go build -o dkc-${RELEASE_VERSION}-linux-amd64 -ldflags="-X github.com/p2p-org/dkc/main.ReleaseVersion=${RELEASE_VERSION}" .
+       tar zcf dkc-${RELEASE_VERSION}-linux-amd64.tar.gz dkc-${RELEASE_VERSION}-linux-amd64
+       sha256sum dkc-${RELEASE_VERSION}-linux-amd64.tar.gz >dkc-${RELEASE_VERSION}-linux-amd64.sha256
+
+    - name: Compile For ARM Linux
+      run: |
+       GOOS=linux GOARCH=arm64 go build -o dkc-${RELEASE_VERSION}-linux-arm64 -ldflags="-X github.com/p2p-org/dkc/main.ReleaseVersion=${RELEASE_VERSION}" .
+       tar zcf dkc-${RELEASE_VERSION}-linux-arm64.tar.gz dkc-${RELEASE_VERSION}-linux-arm64
+       sha256sum dkc-${RELEASE_VERSION}-linux-arm64.tar.gz >dkc-${RELEASE_VERSION}-linux-arm64.sha256
+
+   - name: Compile For 386 Darwin
+      run: |
+       GOOS=darwin GOARCH=386 go build -o dkc-${RELEASE_VERSION}-darwin-386 -ldflags="-X github.com/p2p-org/dkc/main.ReleaseVersion=${RELEASE_VERSION}" .
+       tar zcf dkc-${RELEASE_VERSION}-darwin-386.tar.gz dkc-${RELEASE_VERSION}-darwin-386
+       sha256sum dkc-${RELEASE_VERSION}-darwin-386.tar.gz >dkc-${RELEASE_VERSION}-darwin-386.sha256
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./dkc-${RELEASE_VERSION}-linux-amd64.tar.gz
+          ./dkc-${RELEASE_VERSION}-linux-amd64.sha256
+          ./dkc-${RELEASE_VERSION}-linux-arm64.tar.gz
+          ./dkc-${RELEASE_VERSION}-linux-arm64.sha256
+          ./dkc-${RELEASE_VERSION}-darwin-arm64.tar.gz
+          ./dkc-${RELEASE_VERSION}-darwin-arm64.sha256
+          ./dkc-${RELEASE_VERSION}-darwin-386.tar.gz
+          ./dkc-${RELEASE_VERSION}-darwin-386.sha256
+        generate_release_notes: true
+
