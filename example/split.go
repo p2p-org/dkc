@@ -1,11 +1,13 @@
+// nolint
 package main
 
 import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/herumi/bls-eth-go-binary/bls"
 	"log"
+
+	"github.com/herumi/bls-eth-go-binary/bls"
 	// e2wallet "github.com/wealdtech/go-eth2-wallet"
 	// distributed "github.com/wealdtech/go-eth2-wallet-distributed"
 	// keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"

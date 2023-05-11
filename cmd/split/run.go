@@ -10,8 +10,7 @@ func Run() error {
 		return err
 	}
 
-	utils.LogSplit.Info().Msg("creating wallets")
-	err = splitRuntime.createWallets()
+	err = splitRuntime.validate()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err
@@ -19,6 +18,13 @@ func Run() error {
 
 	utils.LogSplit.Info().Msg("loading wallets")
 	err = splitRuntime.loadWallets()
+	if err != nil {
+		utils.LogSplit.Err(err).Send()
+		return err
+	}
+
+	utils.LogSplit.Info().Msg("creating wallets")
+	err = splitRuntime.createWallets()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err

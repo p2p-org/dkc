@@ -42,7 +42,10 @@ func CreateDWallet(store types.Store) (DWallet, error) {
 }
 
 func createWallet(store types.Store, wType string) (types.Wallet, error) {
-	e2wallet.UseStore(store)
+	err := e2wallet.UseStore(store)
+	if err != nil {
+		return nil, err
+	}
 	wallet, err := e2wallet.CreateWallet(uuid.New().String(), e2wallet.WithType(wType))
 	if err != nil {
 		return nil, errors.Wrap(err, errorFailedToCreateWalletWrapper)

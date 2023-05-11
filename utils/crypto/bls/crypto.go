@@ -44,7 +44,10 @@ func Sign(ctx context.Context, accounts []utils.Account) ([]byte, error) {
 		)
 
 		var peerSig bls.Sign
-		peerSig.Deserialize(account.Signature)
+		err = peerSig.Deserialize(account.Signature)
+		if err != nil {
+			return nil, err
+		}
 		subSignatures = append(
 			subSignatures,
 			peerSig,
@@ -72,7 +75,10 @@ func Recover(ctx context.Context, accounts []utils.Account) ([]byte, error) {
 		)
 
 		var mk bls.SecretKey
-		mk.Deserialize(account.Key)
+		err = mk.Deserialize(account.Key)
+		if err != nil {
+			return nil, err
+		}
 
 		subSKs = append(subSKs, mk)
 	}

@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  prepare:
+    name: Prepare Variables
+    runs-on: [ubuntu-latest]
+    outputs:
+      release_version: ${{ steps.enver.outputs.release_version }}
+    steps:
+    - name: Set env
+      id: enver
+      run: |
+       # Release tag comes from the github reference.
+       RELEASE_TAG=$(echo ${GITHUB_REF} | sed -e 's!.*/!!')
+       # Ensure the release tag has expected format.
+       echo ${RELEASE_TAG} | grep -q '^v' || exit 1
+       # Release version is same as release tag without leading 'v'.
+       RELEASE_VERSION=$(echo ${GITHUB_REF} | sed -e 's!.*/v!!')
+       echo "release_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build For Different Arch
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    needs: prepare
+    env:
+      release_version: ${{needs.prepare.outputs.release_version}}
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: "Setup Go"
+      uses: actions/setup-go@v4
+      with:
+        go-version-file: './go.mod'
+      id: go
+
+    - name: Set env
+      run: |
+       # Set arch related variables
+       echo "goos=$(go env GOOS)" >> $GITHUB_ENV
+       echo "goarch=$(go env GOARCH)" >> $GITHUB_ENV
+
+    - name: Build on ${{runner.os}}
+      run: |
+       #Building for main platform
+       go build -o dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}} -ldflags="-X github.com/p2p-org/dkc/cmd.ReleaseVersion=${{env.release_version}}" .
+       tar zcf dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}
+       shasum -a 256 dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz >dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.sha256
+
+    - name: Save to cache
+      id: cache-save
+      uses: actions/cache@v3
+      with:
+        path: |
+          ./dkc-**.tar.gz
+          ./dkc-**.sha256
+        key: ${{ runner.os }}-${{ env.release_version }}
+
+
+  release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    needs:
+    - build
+    - prepare
+    env:
+      release_version: ${{needs.prepare.outputs.release_version}}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Load From Cache MacOS
+      id: cache-restore-macos
+      uses: actions/cache@v3
+      with:
+        path: |
+          ./dkc-**.tar.gz
+          ./dkc-**.sha256
+        key: macOS-${{ env.release_version }}
+        fail-on-cache-miss: true
+
+    - name: Load From Cache Linux
+      id: cache-restore-linux
+      uses: actions/cache@v3
+      with:
+        path: |
+          ./dkc-**.tar.gz
+          ./dkc-**.sha256
+        key: Linux-${{ env.release_version }}
+        fail-on-cache-miss: true
+
+    - name: Run Changelog CI
+      uses: saadmk11/changelog-ci@v1.1.1
+      with:
+        release_version: ${{ env.release_version }}
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        body_path: CHANGELOG.md
+        files: |
+          ./dkc-**.tar.gz
+          ./dkc-**.sha256
+        generate_release_notes: true
+        fail_on_unmatched_files: true
+

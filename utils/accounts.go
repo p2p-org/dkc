@@ -24,7 +24,9 @@ func CreateNDAccount(
 		return nil, errors.Wrap(err, ErrorUnlockWrapper)
 	}
 
-	defer wallet.Lock(context.Background())
+	defer func() {
+		err = wallet.Lock(context.Background())
+	}()
 
 	account, err := wallet.ImportAccount(context.Background(),
 		name,
@@ -53,7 +55,9 @@ func CreateDAccount(
 		return nil, errors.Wrap(err, ErrorUnlockWrapper)
 	}
 
-	defer wallet.(types.WalletLocker).Lock(context.Background())
+	defer func() {
+		err = wallet.(types.WalletLocker).Lock(context.Background())
+	}()
 
 	account, err := wallet.ImportDistributedAccount(context.Background(),
 		name,

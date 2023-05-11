@@ -10,6 +10,12 @@ func Run() error {
 		return err
 	}
 
+	err = combineRuntime.validate()
+	if err != nil {
+		utils.LogSplit.Err(err).Send()
+		return err
+	}
+
 	utils.LogCombine.Info().Msg("creating wallets")
 	err = combineRuntime.createWalletAndStore()
 	if err != nil {
