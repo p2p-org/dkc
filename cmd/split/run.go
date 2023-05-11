@@ -10,6 +10,12 @@ func Run() error {
 		return err
 	}
 
+	err = splitRuntime.validate()
+	if err != nil {
+		utils.LogSplit.Err(err).Send()
+		return err
+	}
+
 	utils.LogSplit.Info().Msg("loading wallets")
 	err = splitRuntime.loadWallets()
 	if err != nil {

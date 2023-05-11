@@ -83,6 +83,13 @@ func newCombineRuntime() (*CombineRuntime, error) {
 	return cr, nil
 }
 
+func (cr *CombineRuntime) validate() error {
+	if cr.dWalletsPath == cr.ndWalletsPath {
+		return utils.ErrorSameDirs
+	}
+	return nil
+}
+
 func (cr *CombineRuntime) createWalletAndStore() error {
 	var err error
 	utils.LogCombine.Debug().Msgf("creating store %s", cr.ndWalletsPath)

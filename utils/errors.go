@@ -13,6 +13,7 @@ var (
 	ErrorThresholdField       = errors.New("threshold field is empty")
 	ErrorPassphraseEmpty      = errors.New("passphrase is empty")
 	ErrorNotEnoughPeers       = errors.New("current peer value is not enough for threshold value")
+	ErrorSameDirs             = errors.New("same dir for d-wallets and nd-wallets")
 )
 
 const (

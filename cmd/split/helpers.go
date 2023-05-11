@@ -86,6 +86,13 @@ func newSplitRuntime() (*SplitRuntime, error) {
 	return sr, nil
 }
 
+func (sr *SplitRuntime) validate() error {
+	if sr.dWalletsPath == sr.ndWalletsPath {
+		return utils.ErrorSameDirs
+	}
+	return nil
+}
+
 func (sr *SplitRuntime) createWallets() error {
 	for id, peer := range sr.peers {
 		res, err := regexp.Compile(`:.*`)
