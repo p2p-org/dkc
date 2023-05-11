@@ -78,13 +78,16 @@ func newSplitRuntime() (*SplitRuntime, error) {
 
 	sr.peers = dWalletConfig.Peers
 
+	utils.LogSplit.Debug().Msg("generating peersIDs")
+	for id := range sr.peers {
+		sr.peersIDs = append(sr.peersIDs, id)
+	}
+
 	return sr, nil
 }
 
 func (sr *SplitRuntime) createWallets() error {
-	var peersIDs []uint64
 	for id, peer := range sr.peers {
-		peersIDs = append(peersIDs, id)
 		res, err := regexp.Compile(`:.*`)
 		if err != nil {
 			return err
@@ -102,7 +105,6 @@ func (sr *SplitRuntime) createWallets() error {
 		}
 		sr.walletsMap[id] = wallet
 	}
-	sr.peersIDs = peersIDs
 	return nil
 }
 
