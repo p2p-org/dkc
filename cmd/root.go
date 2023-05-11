@@ -10,6 +10,8 @@ import (
 	e2types "github.com/wealdtech/go-eth2-types/v2"
 )
 
+var ReleaseVersion = "v0.0.1"
+
 var (
 	cfgFile string
 )
@@ -34,7 +36,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "config file")
 
 	rootCmd.PersistentFlags().String("log-level", "INFO", "Log Level")
-	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
+	err := viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
+	if err != nil {
+		utils.Log.Fatal().Err(err).Send()
+	}
 
 	if err := e2types.InitBLS(); err != nil {
 		utils.Log.Fatal().Err(err).Send()
@@ -47,9 +52,7 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err == nil {
+		viper.Set("version", ReleaseVersion)
 		utils.InitLogging()
-
-		utils.Log.Info().Msg("starting DKC")
-		utils.Log.Info().Msgf("using config file: %s", viper.ConfigFileUsed())
 	}
 }

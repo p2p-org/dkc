@@ -2,7 +2,7 @@ package utils
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	e2wallet "github.com/wealdtech/go-eth2-wallet"
@@ -31,7 +31,7 @@ func CreateStore(path string) (types.Store, error) {
 func LoadStores(ctx context.Context, walletDir string, passphrases [][]byte) ([]DirkStore, error) {
 	var stores []DirkStore
 
-	dirs, err := ioutil.ReadDir(walletDir)
+	dirs, err := os.ReadDir(walletDir)
 	if err != nil {
 		return nil, errors.Wrap(err, ErrorWalletDirWrapper)
 	}
