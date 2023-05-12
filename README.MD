@@ -85,3 +85,4 @@ Contributions welcome. Please check out [the issues](https://github.com/p2p-org/
 
 ## License
 
+[License](./LICENSE)
