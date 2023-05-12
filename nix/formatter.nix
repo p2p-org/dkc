@@ -9,7 +9,7 @@
     ...
   }: {
     treefmt.config = {
-      inherit (config.flake-root) projectRootFile;
+      projectRootFile = ".git/config";
       package = pkgs.treefmt;
 
       programs = {
