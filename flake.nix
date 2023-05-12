@@ -8,18 +8,16 @@
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
-    flake-root.url = "github:srid/flake-root";
     pre-commit-hooks-nix = {
       url = "github:hercules-ci/pre-commit-hooks.nix/flakeModule";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    mission-control.url = "github:Platonic-Systems/mission-control";
-    treefmt-nix = {
-      url = "github:numtide/treefmt-nix";
+    devshell = {
+      url = "github:numtide/devshell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    statix = {
-      url = "github:nerdypepper/statix";
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -33,13 +31,7 @@
       inherit inputs;
     }
     {
-      imports = [
-        inputs.flake-parts.flakeModules.easyOverlay
-        inputs.flake-root.flakeModule
-        inputs.mission-control.flakeModule
-        inputs.pre-commit-hooks-nix.flakeModule
-        ./nix
-      ];
+      imports = [./nix];
       systems = ["x86_64-linux" "aarch64-darwin"];
     };
 }

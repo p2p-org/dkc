@@ -36,7 +36,7 @@ go build .
 
 :bangbang: Before you begin, make sure you backup keys and store recovered wallets and passwords securely.
 
-`dkc` uses [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary). The pseudocode of using [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary) in `dkc` is available [here](./example/split.go) 
+`dkc` uses [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary). Some research code of using [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary) in `dkc` is available [here](./research/research.go) 
 
 You can also test `dkc` on predefiened inputs [here](.github/workflows/func-tests.yml). 
 

@@ -1,7 +1,9 @@
 name: Snyk Vulnerabilities Checker
 on:
+  push:
+    tags: ['v*']
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
   workflow_dispatch:
   schedule:
     - cron: '00 10 * * 1'
