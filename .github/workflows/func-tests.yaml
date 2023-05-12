@@ -1,8 +1,10 @@
 name: Functional Tests
 
 on:
+  push:
+    tags: ['v*']
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
   workflow_dispatch:
 
 jobs:
@@ -14,18 +16,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: "Build dkc script"
+      - name: 'Build dkc script'
         uses: actions/setup-go@v4
         with:
           go-version-file: './go.mod'
       - run: go build ../../
 
-      - name: "Install ethdo"
+      - name: 'Install ethdo'
         run: |
           go install "github.com/wealdtech/ethdo@$ethdo_version"
         env:
-          ethdo_version: "v1.28.5"
-      - name: "Get Original Wallets"
+          ethdo_version: 'v1.28.5'
+      - name: 'Get Original Wallets'
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           account_pubkey_map='{}'
@@ -44,7 +46,7 @@ jobs:
           done;
           echo "account_pubkey_map=${account_pubkey_map}" >> $GITHUB_ENV
 
-      - name: "Prepare configs"
+      - name: 'Prepare configs'
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           cp config.yaml config-combine.yaml
@@ -56,7 +58,7 @@ jobs:
           sed -i "s,DISTRIBUTED_WALLETS,$output_distributed_wallets_path,g" config-split.yaml
           sed -i "s,ND_WALLETS,$output_nd_wallets_path,g" config-split.yaml
 
-      - name: "COMBINE Function Test"
+      - name: 'COMBINE Function Test'
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           #Combine
@@ -76,7 +78,7 @@ jobs:
             echo -e "Account [$account]: ${green}OK${nc}"
           done;
 
-      - name: "Split Function Test"
+      - name: 'Split Function Test'
         run: |
           #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
           #Split
@@ -96,10 +98,10 @@ jobs:
             echo -e "Account [$account]: ${green}OK${nc}"
           done;
     env:
-      wallet_name: "DW"
-      input_distributed_wallets_path: "./wallets"
-      output_nd_wallets_path: "./nd_wallets"
-      output_distributed_wallets_path: "./distributed_wallets"
+      wallet_name: 'DW'
+      input_distributed_wallets_path: './wallets'
+      output_nd_wallets_path: './nd_wallets'
+      output_distributed_wallets_path: './distributed_wallets'
       red: '\033[0;31m'
       green: '\033[0;32m'
       nc: '\033[0m'
