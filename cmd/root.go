@@ -10,7 +10,7 @@ import (
 	e2types "github.com/wealdtech/go-eth2-types/v2"
 )
 
-var ReleaseVersion = "v0.0.1"
+var ReleaseVersion string
 
 var (
 	cfgFile string
@@ -47,12 +47,12 @@ func init() {
 }
 func initConfig() {
 	viper.SetConfigFile(cfgFile)
+	viper.Set("version", ReleaseVersion)
 
 	viper.SetEnvPrefix("DKC")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err == nil {
-		viper.Set("version", ReleaseVersion)
 		utils.InitLogging()
 	}
 }
