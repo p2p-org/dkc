@@ -1,5 +1,7 @@
 # Dirk Key Converter (dkc)
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/p2p-org/dkc)](https://goreportcard.com/report/github.com/p2p-org/dkc)
+
 Transform wallets between [distributed type](https://github.com/wealdtech/go-eth2-wallet-distributed) and [non-deterministic type](https://github.com/wealdtech/go-eth2-wallet-nd).
 
 :bangbang: It is highly recommended to refrain from any operations on the validation keys and use the provided script only in critical situations to avoid any ponential risks of slashing.
