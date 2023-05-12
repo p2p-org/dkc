@@ -15,7 +15,7 @@ jobs:
     outputs:
       release_version: ${{ steps.enver.outputs.release_version }}
     steps:
-    - building:
+    - name: Run Tests and Linters
         uses: ./.github/workflows/build.yml
 
     - name: Set env
