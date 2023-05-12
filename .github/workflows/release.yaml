@@ -57,7 +57,7 @@ jobs:
       - name: Build on ${{runner.os}}
         run: |
           #Building for main platform
-          go build -o dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}} -ldflags="-X github.com/p2p-org/dkc/cmd.ReleaseVersion=${{env.release_version}}" .
+          go build -o dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}} -ldflags="-s -w -X github.com/p2p-org/dkc/cmd.ReleaseVersion=${{env.release_version}}" .
           tar zcf dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}
           shasum -a 256 dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz >dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.sha256
 
