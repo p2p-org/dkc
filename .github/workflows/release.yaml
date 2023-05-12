@@ -1,9 +1,9 @@
 name: Release
 
 on:
-  push:
-    tags:
-    - 'v*'
+  workflow_run:
+    workflows: ["Integration tests"]
+    types: [completed]
 
 env:
   artifacts_name: "building-artifacts"
