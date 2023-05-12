@@ -9,14 +9,14 @@ env:
   artifacts_name: "building-artifacts"
 
 jobs:
+  tests-and-linters:
+    uses: ./.github/workflows/build.yml
   prepare:
     name: Prepare Variables
     runs-on: [ubuntu-latest]
     outputs:
       release_version: ${{ steps.enver.outputs.release_version }}
     steps:
-    - name: Run Tests and Linters
-        uses: ./.github/workflows/build.yml
 
     - name: Set env
       id: enver
