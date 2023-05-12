@@ -3,7 +3,7 @@ name: Release
 on:
   workflow_run:
     workflows:
-      - "Integration tests"
+      - 'build.yaml'
     types:
       - completed
     branches:
