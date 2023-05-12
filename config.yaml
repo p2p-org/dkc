@@ -1,8 +1,0 @@
-passphrases: ./passphrases.txt
-nd-wallets: ./nd-wallets
-distributed-wallets: ./wallets
-signing-threshold: 2
-peers:
-  10: old1:9091
-  20: old2:9091
-  30: old3:9091

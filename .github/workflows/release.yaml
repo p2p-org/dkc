@@ -5,13 +5,21 @@ on:
     tags:
     - 'v*'
 
+env:
+  artifacts_name: "building-artifacts"
+
 jobs:
+  tests-and-linters:
+    uses: ./.github/workflows/build.yaml
+
   prepare:
     name: Prepare Variables
     runs-on: [ubuntu-latest]
+    needs: tests-and-linters
     outputs:
       release_version: ${{ steps.enver.outputs.release_version }}
     steps:
+
     - name: Set env
       id: enver
       run: |
@@ -22,6 +30,7 @@ jobs:
        # Release version is same as release tag without leading 'v'.
        RELEASE_VERSION=$(echo ${GITHUB_REF} | sed -e 's!.*/v!!')
        echo "release_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+
 
   build:
     name: Build For Different Arch
@@ -56,14 +65,15 @@ jobs:
        tar zcf dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}
        shasum -a 256 dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz >dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.sha256
 
-    - name: Save to cache
-      id: cache-save
-      uses: actions/cache@v3
+    - name: Save to artifacts
+      id: artifacts-save
+      uses: actions/upload-artifact@v3
       with:
+        name: ${{ env.artifacts_name }}
         path: |
           ./dkc-**.tar.gz
           ./dkc-**.sha256
-        key: ${{ runner.os }}-${{ env.release_version }}
+        if-no-files-found: error
 
 
   release:
@@ -78,25 +88,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Load From Cache MacOS
-      id: cache-restore-macos
-      uses: actions/cache@v3
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
       with:
-        path: |
-          ./dkc-**.tar.gz
-          ./dkc-**.sha256
-        key: macOS-${{ env.release_version }}
-        fail-on-cache-miss: true
-
-    - name: Load From Cache Linux
-      id: cache-restore-linux
-      uses: actions/cache@v3
-      with:
-        path: |
-          ./dkc-**.tar.gz
-          ./dkc-**.sha256
-        key: Linux-${{ env.release_version }}
-        fail-on-cache-miss: true
+        name: ${{ env.artifacts_name }}
 
     - name: Run Changelog CI
       uses: saadmk11/changelog-ci@v1.1.1
