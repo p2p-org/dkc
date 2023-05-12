@@ -2,7 +2,8 @@ name: Release
 
 on:
   workflow_run:
-    workflows: ["Integration tests"]
+    workflows:
+      - "Integration tests"
     types:
       - completed
 
@@ -10,96 +11,97 @@ env:
   artifacts_name: "building-artifacts"
 
 jobs:
-  prepare:
-    name: Prepare Variables
-    runs-on: [ubuntu-latest]
-    outputs:
-      release_version: ${{ steps.enver.outputs.release_version }}
-    steps:
-    - name: Set env
-      id: enver
-      run: |
-       # Release tag comes from the github reference.
-       RELEASE_TAG=$(echo ${GITHUB_REF} | sed -e 's!.*/!!')
-       # Ensure the release tag has expected format.
-       echo ${RELEASE_TAG} | grep -q '^v' || exit 1
-       # Release version is same as release tag without leading 'v'.
-       RELEASE_VERSION=$(echo ${GITHUB_REF} | sed -e 's!.*/v!!')
-       echo "release_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+  on-success:
+    prepare:
+      name: Prepare Variables
+      runs-on: [ubuntu-latest]
+      outputs:
+        release_version: ${{ steps.enver.outputs.release_version }}
+      steps:
+      - name: Set env
+        id: enver
+        run: |
+         # Release tag comes from the github reference.
+         RELEASE_TAG=$(echo ${GITHUB_REF} | sed -e 's!.*/!!')
+         # Ensure the release tag has expected format.
+         echo ${RELEASE_TAG} | grep -q '^v' || exit 1
+         # Release version is same as release tag without leading 'v'.
+         RELEASE_VERSION=$(echo ${GITHUB_REF} | sed -e 's!.*/v!!')
+         echo "release_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
 
-  build:
-    name: Build For Different Arch
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    needs: prepare
-    env:
-      release_version: ${{needs.prepare.outputs.release_version}}
-    steps:
+    build:
+      name: Build For Different Arch
+      strategy:
+        matrix:
+          os: [ubuntu-latest, macos-latest]
+      runs-on: ${{ matrix.os }}
+      needs: prepare
+      env:
+        release_version: ${{needs.prepare.outputs.release_version}}
+      steps:
 
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: "Setup Go"
-      uses: actions/setup-go@v4
-      with:
-        go-version-file: './go.mod'
-      id: go
+      - name: "Setup Go"
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: './go.mod'
+        id: go
 
-    - name: Set env
-      run: |
-       # Set arch related variables
-       echo "goos=$(go env GOOS)" >> $GITHUB_ENV
-       echo "goarch=$(go env GOARCH)" >> $GITHUB_ENV
+      - name: Set env
+        run: |
+         # Set arch related variables
+         echo "goos=$(go env GOOS)" >> $GITHUB_ENV
+         echo "goarch=$(go env GOARCH)" >> $GITHUB_ENV
 
-    - name: Build on ${{runner.os}}
-      run: |
-       #Building for main platform
-       go build -o dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}} -ldflags="-X github.com/p2p-org/dkc/cmd.ReleaseVersion=${{env.release_version}}" .
-       tar zcf dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}
-       shasum -a 256 dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz >dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.sha256
+      - name: Build on ${{runner.os}}
+        run: |
+         #Building for main platform
+         go build -o dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}} -ldflags="-X github.com/p2p-org/dkc/cmd.ReleaseVersion=${{env.release_version}}" .
+         tar zcf dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}
+         shasum -a 256 dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz >dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.sha256
 
-    - name: Save to artifacts
-      id: artifacts-save
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ env.artifacts_name }}
-        path: |
-          ./dkc-**.tar.gz
-          ./dkc-**.sha256
-        if-no-files-found: error
+      - name: Save to artifacts
+        id: artifacts-save
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.artifacts_name }}
+          path: |
+            ./dkc-**.tar.gz
+            ./dkc-**.sha256
+          if-no-files-found: error
 
 
-  release:
-    name: Publish Release
-    runs-on: ubuntu-latest
-    needs:
-    - build
-    - prepare
-    env:
-      release_version: ${{needs.prepare.outputs.release_version}}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+    release:
+      name: Publish Release
+      runs-on: ubuntu-latest
+      needs:
+      - build
+      - prepare
+      env:
+        release_version: ${{needs.prepare.outputs.release_version}}
+      steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: ${{ env.artifacts_name }}
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ env.artifacts_name }}
 
-    - name: Run Changelog CI
-      uses: saadmk11/changelog-ci@v1.1.1
-      with:
-        release_version: ${{ env.release_version }}
+      - name: Run Changelog CI
+        uses: saadmk11/changelog-ci@v1.1.1
+        with:
+          release_version: ${{ env.release_version }}
 
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        body_path: CHANGELOG.md
-        files: |
-          ./dkc-**.tar.gz
-          ./dkc-**.sha256
-        generate_release_notes: true
-        fail_on_unmatched_files: true
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: CHANGELOG.md
+          files: |
+            ./dkc-**.tar.gz
+            ./dkc-**.sha256
+          generate_release_notes: true
+          fail_on_unmatched_files: true
 
