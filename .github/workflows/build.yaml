@@ -1,9 +1,6 @@
 name: Integration tests
 
 on:
-  push:
-    tags:
-      - "v*"
   pull_request:
     branches:
       - 'master'

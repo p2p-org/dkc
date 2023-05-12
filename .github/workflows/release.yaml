@@ -1,10 +1,9 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: [Integration tests]
-    types:
-      - completed
+  push:
+    tags:
+    - 'v*'
 
 env:
   artifacts_name: "building-artifacts"
@@ -16,6 +15,9 @@ jobs:
     outputs:
       release_version: ${{ steps.enver.outputs.release_version }}
     steps:
+    - building:
+        uses: ./.github/workflows/build.yml
+
     - name: Set env
       id: enver
       run: |
@@ -26,6 +28,7 @@ jobs:
        # Release version is same as release tag without leading 'v'.
        RELEASE_VERSION=$(echo ${GITHUB_REF} | sed -e 's!.*/v!!')
        echo "release_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+
 
   build:
     name: Build For Different Arch
