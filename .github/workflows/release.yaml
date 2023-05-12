@@ -3,7 +3,8 @@ name: Release
 on:
   workflow_run:
     workflows: ["Integration tests"]
-    types: [completed]
+    types:
+      - completed
 
 env:
   artifacts_name: "building-artifacts"
