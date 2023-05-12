@@ -70,8 +70,18 @@ Combine [distributed type](https://github.com/wealdtech/go-eth2-wallet-distribut
 Split [non-deterministic type](https://github.com/wealdtech/go-eth2-wallet-nd) to [distributed type](https://github.com/wealdtech/go-eth2-wallet-distributed)
 
 ```sh
-./dkc combine --config=config.yaml
+./dkc split --config=config.yaml
 ```
+
+## Maintainers
+
+Sergey Yakovlev: [@selfuryon](https://github.com/selfuryon).
+
+SpontaneousOverthrow: [@SpontaneousOverthrow](https://github.com/SpontaneousOverthrow).
+
 ## Contribute
 
 Contributions welcome. Please check out [the issues](https://github.com/p2p-org/dkc/issues).
+
+## License
+
