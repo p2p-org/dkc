@@ -6,6 +6,8 @@ on:
       - "Integration tests"
     types:
       - completed
+    branches:
+      - '**'
 
 env:
   artifacts_name: "building-artifacts"
