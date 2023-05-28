@@ -8,6 +8,7 @@ import (
 	"github.com/p2p-org/dkc/utils"
 	"github.com/p2p-org/dkc/utils/crypto/bls"
 	"github.com/spf13/viper"
+	"github.com/google/uuid"
 )
 
 type SplitRuntime struct {
@@ -94,6 +95,7 @@ func (sr *SplitRuntime) validate() error {
 }
 
 func (sr *SplitRuntime) createWallets() error {
+	walletName := uuid.New().String()
 	for id, peer := range sr.peers {
 		res, err := regexp.Compile(`:.*`)
 		if err != nil {
@@ -106,7 +108,7 @@ func (sr *SplitRuntime) createWallets() error {
 			return err
 		}
 		utils.LogSplit.Debug().Msgf("creating wallet for peer %d", id)
-		wallet, err := utils.CreateDWallet(store)
+		wallet, err := utils.CreateDWallet(store, walletName)
 		if err != nil {
 			return err
 		}

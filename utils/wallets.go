@@ -22,7 +22,8 @@ type DWallet interface {
 }
 
 func CreateNDWallet(store types.Store) (NDWallet, error) {
-	wallet, err := createWallet(store, "non-deterministic")
+	walletName := uuid.New().String()
+	wallet, err := createWallet(store, "non-deterministic", walletName)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func CreateNDWallet(store types.Store) (NDWallet, error) {
 	return ndWallet, err
 }
 
-func CreateDWallet(store types.Store) (DWallet, error) {
-	wallet, err := createWallet(store, "distributed")
+func CreateDWallet(store types.Store, walletName string) (DWallet, error) {
+	wallet, err := createWallet(store, "distributed", walletName)
 	if err != nil {
 		return nil, err
 	}
@@ -41,12 +42,12 @@ func CreateDWallet(store types.Store) (DWallet, error) {
 	return dWallet, nil
 }
 
-func createWallet(store types.Store, wType string) (types.Wallet, error) {
+func createWallet(store types.Store, wType string, walletName string) (types.Wallet, error) {
 	err := e2wallet.UseStore(store)
 	if err != nil {
 		return nil, err
 	}
-	wallet, err := e2wallet.CreateWallet(uuid.New().String(), e2wallet.WithType(wType))
+	wallet, err := e2wallet.CreateWallet(walletName, e2wallet.WithType(wType))
 	if err != nil {
 		return nil, errors.Wrap(err, errorFailedToCreateWalletWrapper)
 	}
