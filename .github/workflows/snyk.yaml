@@ -4,6 +4,9 @@ on:
     tags: ['v*']
   pull_request:
     branches: ['main']
+#By default, a workflow only runs when a pull_request_target event's activity type is opened, synchronize, or reopened
+  pull_request_target:
+    branches: ['main']
   workflow_dispatch:
   schedule:
     - cron: '00 10 * * 1'
