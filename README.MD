@@ -47,12 +47,17 @@ An example config can be found [here](.github/examples/config.yaml)
 ```yaml
 distributed-wallets:                #Distributed-wallets section
   path: ./wallet                    #Path to distributed wallet (Default: None)
-  passphrases: ./passphrases.txt    #Path to file containing passphrases for unlocking/locking accounts (Default: None)
   threshold: 2                      #Threshlod value (Default: None)
   peers:                            #Peers dict, number of peers must be greater than threshold value (Default: None)
-    10: old1:9091
-    20: old2:9091
-    30: old3:9091
+    - id: 10
+      host: old1:9091
+      passphrase: abcd
+    - id: 20
+      host: old2:9091
+      passphrase: 8888
+    - id: 30
+      host: old3:9091
+      passphrase: 4a4a4a4a4a4a4a
 nd-wallets:                         #Non-determenistic-wallets section                    
   path: nd_wallets                  #Path to non-determenistic wallet (Default: None)
   passphrases: ./passphrases.txt    #Path to file containing passphrases for unlocking/locking accounts (Default: None)
