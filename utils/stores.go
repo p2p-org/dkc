@@ -15,8 +15,6 @@ type DirkStore struct {
 	Wallets  []types.Wallet
 }
 
-type Peers = map[uint64]string
-
 type Account struct {
 	ID        uint64
 	Key       []byte
@@ -28,7 +26,7 @@ func CreateStore(path string) (types.Store, error) {
 	return store, nil
 }
 
-func LoadStores(ctx context.Context, walletDir string, passphrases [][]byte) ([]DirkStore, error) {
+func LoadStores(ctx context.Context, walletDir string) ([]DirkStore, error) {
 	var stores []DirkStore
 
 	dirs, err := os.ReadDir(walletDir)
@@ -37,7 +35,7 @@ func LoadStores(ctx context.Context, walletDir string, passphrases [][]byte) ([]
 	}
 	for _, f := range dirs {
 		if f.IsDir() {
-			store, err := LoadStore(ctx, walletDir+"/"+f.Name(), passphrases)
+			store, err := LoadStore(ctx, walletDir+"/"+f.Name())
 			if err != nil {
 				return nil, errors.Wrap(err, ErrorLoadStoreWrapper)
 			}
@@ -47,7 +45,7 @@ func LoadStores(ctx context.Context, walletDir string, passphrases [][]byte) ([]
 	return stores, nil
 }
 
-func LoadStore(ctx context.Context, location string, passphrases [][]byte) (*DirkStore, error) {
+func LoadStore(ctx context.Context, location string) (*DirkStore, error) {
 	dirkStore := DirkStore{}
 	dirkStore.Location = location
 	var wallets []types.Wallet

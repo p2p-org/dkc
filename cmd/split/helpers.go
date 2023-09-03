@@ -16,9 +16,8 @@ type SplitRuntime struct {
 	dWalletsPath   string
 	ndWalletsPath  string
 	passphrasesIn  [][]byte
-	passphrasesOut [][]byte
 	accountDatas   map[string]AccountExtends
-	peers          utils.Peers
+	peers          map[uint64]utils.Peer
 	threshold      uint32
 	walletsMap     map[uint64]utils.DWallet
 	peersIDs       []uint64
@@ -69,18 +68,17 @@ func newSplitRuntime() (*SplitRuntime, error) {
 	if err != nil {
 		return nil, err
 	}
-	utils.LogSplit.Debug().Msgf("getting input passwords from %s", dWalletConfig.Passphrases)
-	sr.passphrasesOut, err = utils.GetAccountsPasswords(dWalletConfig.Passphrases)
-	if err != nil {
-		return nil, err
-	}
+
 	sr.accountDatas = make(map[string]AccountExtends)
 	sr.walletsMap = make(map[uint64]utils.DWallet)
 
-	sr.peers = dWalletConfig.Peers
+	sr.peers = make(map[uint64]utils.Peer, 0)
+	for _, peer := range dWalletConfig.Peers {
+		sr.peers[peer.ID] = peer
+	}
 
 	utils.LogSplit.Debug().Msg("generating peersIDs")
-	for id := range sr.peers {
+	for id,_ := range sr.peers {
 		sr.peersIDs = append(sr.peersIDs, id)
 	}
 
@@ -96,13 +94,13 @@ func (sr *SplitRuntime) validate() error {
 
 func (sr *SplitRuntime) createWallets() error {
 	walletName := uuid.New().String()
-	for id, peer := range sr.peers {
+	for id,peer := range sr.peers {
 		res, err := regexp.Compile(`:.*`)
 		if err != nil {
 			return err
 		}
 		utils.LogSplit.Debug().Msgf("creating store for peer: %d", id)
-		storePath := sr.dWalletsPath + "/" + res.ReplaceAllString(peer, "")
+		storePath := sr.dWalletsPath + "/" + res.ReplaceAllString(peer.Host, "")
 		store, err := utils.CreateStore(storePath)
 		if err != nil {
 			return err
@@ -119,7 +117,7 @@ func (sr *SplitRuntime) createWallets() error {
 
 func (sr *SplitRuntime) loadWallets() error {
 	utils.LogSplit.Debug().Msgf("load store %s", sr.ndWalletsPath)
-	s, err := utils.LoadStore(sr.ctx, sr.ndWalletsPath, sr.passphrasesIn)
+	s, err := utils.LoadStore(sr.ctx, sr.ndWalletsPath)
 	if err != nil {
 		return err
 	}
@@ -172,7 +170,8 @@ func (sr *SplitRuntime) saveAccounts() error {
 	for accountName, account := range sr.accountDatas {
 		utils.LogSplit.Debug().Msgf("saving account %s ", accountName)
 		for i, acc := range account.Accounts {
-			utils.LogSplit.Debug().Msgf("creating account with id %d ", acc.ID)
+			utils.LogSplit.Debug().Msgf("creating account with id %d", acc.ID)			
+
 			finalAccount, err := utils.CreateDAccount(
 				sr.walletsMap[acc.ID],
 				accountName,
@@ -180,14 +179,16 @@ func (sr *SplitRuntime) saveAccounts() error {
 				acc.Key,
 				sr.threshold,
 				sr.peers,
-				sr.passphrasesOut[0],
+				sr.peers[acc.ID].Passphrase,
 			)
 			if err != nil {
 				return err
 			}
 
 			utils.LogSplit.Debug().Msgf("generating signature for account with id %d ", acc.ID)
-			account.Accounts[i].Signature, err = utils.AccountSign(sr.ctx, finalAccount, sr.passphrasesOut)
+			passArr := make([][]byte,1)
+			passArr[0] = []byte(sr.peers[acc.ID].Passphrase)
+			account.Accounts[i].Signature, err = utils.AccountSign(sr.ctx, finalAccount, passArr)
 			if err != nil {
 				return err
 			}

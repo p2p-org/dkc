@@ -46,8 +46,8 @@ func CreateDAccount(
 	masterPKs [][]byte,
 	masterSK []byte,
 	threshold uint32,
-	peers map[uint64]string,
-	passphrase []byte,
+	peers map[uint64]Peer,
+	passphrase string,
 ) (types.Account, error) {
 
 	err := wallet.Unlock(context.Background(), nil)
@@ -59,13 +59,20 @@ func CreateDAccount(
 		err = wallet.(types.WalletLocker).Lock(context.Background())
 	}()
 
+        peerMap := make(map[uint64]string, 0)
+        for id, peer := range peers {
+                peerMap[id] = peer.Host
+        }
+
+        passBytes := []byte(passphrase)
+
 	account, err := wallet.ImportDistributedAccount(context.Background(),
 		name,
 		masterSK,
 		threshold,
 		masterPKs,
-		peers,
-		passphrase)
+		peerMap,
+		passBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, ErrorImportWrapper)
 	}

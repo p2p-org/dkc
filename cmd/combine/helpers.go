@@ -21,11 +21,10 @@ type CombineRuntime struct {
 	ctx            context.Context
 	dWalletsPath   string
 	ndWalletsPath  string
-	passphrasesIn  [][]byte
 	passphrasesOut [][]byte
 	accountDatas   map[string]AccountExtends
 	stores         []utils.DirkStore
-	peers          utils.Peers
+	peers          map[uint64]utils.Peer
 	wallet         utils.NDWallet
 	store          types.Store
 }
@@ -61,11 +60,7 @@ func newCombineRuntime() (*CombineRuntime, error) {
 	cr.ctx = context.Background()
 	cr.dWalletsPath = dWalletConfig.Path
 	cr.ndWalletsPath = ndWalletConfig.Path
-	utils.LogCombine.Debug().Msgf("getting input passwords form file %s", dWalletConfig.Passphrases)
-	cr.passphrasesIn, err = utils.GetAccountsPasswords(dWalletConfig.Passphrases)
-	if err != nil {
-		return nil, err
-	}
+
 	utils.LogCombine.Debug().Msgf("getting output passwords form file %s", ndWalletConfig.Passphrases)
 	cr.passphrasesOut, err = utils.GetAccountsPasswords(ndWalletConfig.Passphrases)
 	if err != nil {
@@ -73,12 +68,15 @@ func newCombineRuntime() (*CombineRuntime, error) {
 	}
 	cr.accountDatas = make(map[string]AccountExtends)
 	utils.LogCombine.Debug().Msgf("loading stores form %s", cr.dWalletsPath)
-	cr.stores, err = utils.LoadStores(cr.ctx, cr.dWalletsPath, cr.passphrasesIn)
+	cr.stores, err = utils.LoadStores(cr.ctx, cr.dWalletsPath)
 	if err != nil {
 		return nil, err
 	}
 
-	cr.peers = dWalletConfig.Peers
+	cr.peers = make(map[uint64]utils.Peer, 0)
+	for _, peer := range dWalletConfig.Peers {
+		cr.peers[peer.ID] = peer
+	}
 
 	return cr, nil
 }
@@ -158,8 +156,8 @@ func (cr *CombineRuntime) checkSignature() error {
 func (cr *CombineRuntime) storeUpdater() error {
 	for _, store := range cr.stores {
 		var participantID uint64
-		for id := range cr.peers {
-			peerExists, err := regexp.MatchString(filepath.Base(store.Location)+":.*", cr.peers[id])
+		for id, peer := range cr.peers {
+			peerExists, err := regexp.MatchString(filepath.Base(store.Location)+":.*", peer.Host)
 			if err != nil {
 				return err
 			}
@@ -169,16 +167,18 @@ func (cr *CombineRuntime) storeUpdater() error {
 			participantID = id
 
 			for _, wallet := range store.Wallets {
-				utils.LogCombine.Debug().Msgf("loading data for wallet %s", wallet.Name())
+				utils.LogCombine.Debug().Msgf("loading data for wallet %s peer ID %d and host %s", wallet.Name(), peer.ID, peer.Host)
 				for account := range wallet.Accounts(cr.ctx) {
+                        		passArr := make([][]byte,1)
+               			        passArr[0] = []byte(peer.Passphrase)
 					utils.LogCombine.Debug().Msgf("get private key for account %s", account.Name())
-					key, err := utils.GetAccountKey(cr.ctx, account, cr.passphrasesOut)
+					key, err := utils.GetAccountKey(cr.ctx, account, passArr)
 					if err != nil {
 						return err
 					}
 
 					utils.LogCombine.Debug().Msgf("sign message from account %s", account.Name())
-					initialSignature, err := utils.AccountSign(cr.ctx, account, cr.passphrasesOut)
+					initialSignature, err := utils.AccountSign(cr.ctx, account, passArr)
 					if err != nil {
 						return err
 					}

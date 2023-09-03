@@ -13,10 +13,15 @@ type NDWalletConfig struct {
 }
 
 type DWalletConfig struct {
-	Path        string
-	Passphrases string
-	Peers       Peers
-	Threshold   uint32
+	Path            string
+	Peers           []Peer
+	Threshold       uint32
+}
+
+type Peer struct {
+	ID         uint64
+	Host       string
+	Passphrase string
 }
 
 func GetAccountsPasswords(path string) ([][]byte, error) {
@@ -51,11 +56,6 @@ func (data *NDWalletConfig) Validate() error {
 func (data *DWalletConfig) Validate() error {
 	if data.Path == "" {
 		err := ErrorPathField
-		return errors.Wrap(err, ErrorDWalletStructWrapper)
-	}
-
-	if data.Passphrases == "" {
-		err := ErrorPassphrasesField
 		return errors.Wrap(err, ErrorDWalletStructWrapper)
 	}
 
