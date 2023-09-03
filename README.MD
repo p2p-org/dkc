@@ -49,6 +49,7 @@ distributed-wallets:                #Distributed-wallets section
   path: ./wallet                    #Path to distributed wallet (Default: None)
   passphrases: ./passphrases.txt    #Path to file containing passphrases for unlocking/locking accounts (Default: None)
   threshold: 2                      #Threshlod value (Default: None)
+  walletname: myDKWallet
   peers:                            #Peers dict, number of peers must be greater than threshold value (Default: None)
     10: old1:9091
     20: old2:9091
