@@ -11,9 +11,7 @@
     dkc = pkgs.buildGoModule {
       inherit pname version;
       src = ../.;
-
-      vendorHash = "sha256-EtGm+9jpGGB+/aUzIyFfe3ZbyhqliL3G9qJBf2nKseY=";
-
+      vendorHash = "sha256-u01V+kCIWHtFOSTnUcpNhXXZaunmqzn+aEurV7fDpHY=";
       buildInputs = [mcl bls];
 
       ldflags = [
