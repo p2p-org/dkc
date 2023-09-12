@@ -17,7 +17,7 @@ type AccountExtends struct {
 	Accounts         []utils.Account
 }
 
-type CombineRuntime struct {
+type Runtime struct {
 	ctx            context.Context
 	dWalletsPath   string
 	ndWalletsPath  string
@@ -30,8 +30,8 @@ type CombineRuntime struct {
 	store          types.Store
 }
 
-func newCombineRuntime() (*CombineRuntime, error) {
-	cr := &CombineRuntime{}
+func newRuntime() (*Runtime, error) {
+	rt := &Runtime{}
 	var err error
 
 	utils.LogCombine.Debug().Msg("validating nd-wallets field")
@@ -58,75 +58,75 @@ func newCombineRuntime() (*CombineRuntime, error) {
 		return nil, err
 	}
 
-	cr.ctx = context.Background()
-	cr.dWalletsPath = dWalletConfig.Path
-	cr.ndWalletsPath = ndWalletConfig.Path
+	rt.ctx = context.Background()
+	rt.dWalletsPath = dWalletConfig.Path
+	rt.ndWalletsPath = ndWalletConfig.Path
 	utils.LogCombine.Debug().Msgf("getting input passwords form file %s", dWalletConfig.Passphrases)
-	cr.passphrasesIn, err = utils.GetAccountsPasswords(dWalletConfig.Passphrases)
+	rt.passphrasesIn, err = utils.GetAccountsPasswords(dWalletConfig.Passphrases)
 	if err != nil {
 		return nil, err
 	}
 	utils.LogCombine.Debug().Msgf("getting output passwords form file %s", ndWalletConfig.Passphrases)
-	cr.passphrasesOut, err = utils.GetAccountsPasswords(ndWalletConfig.Passphrases)
+	rt.passphrasesOut, err = utils.GetAccountsPasswords(ndWalletConfig.Passphrases)
 	if err != nil {
 		return nil, err
 	}
-	cr.accountDatas = make(map[string]AccountExtends)
-	utils.LogCombine.Debug().Msgf("loading stores form %s", cr.dWalletsPath)
-	cr.stores, err = utils.LoadStores(cr.ctx, cr.dWalletsPath, cr.passphrasesIn)
+	rt.accountDatas = make(map[string]AccountExtends)
+	utils.LogCombine.Debug().Msgf("loading stores form %s", rt.dWalletsPath)
+	rt.stores, err = utils.LoadStores(rt.ctx, rt.dWalletsPath, rt.passphrasesIn)
 	if err != nil {
 		return nil, err
 	}
 
-	cr.peers = dWalletConfig.Peers
+	rt.peers = dWalletConfig.Peers
 
-	return cr, nil
+	return rt, nil
 }
 
-func (cr *CombineRuntime) validate() error {
-	if cr.dWalletsPath == cr.ndWalletsPath {
+func (rt *Runtime) validate() error {
+	if rt.dWalletsPath == rt.ndWalletsPath {
 		return utils.ErrorSameDirs
 	}
 	return nil
 }
 
-func (cr *CombineRuntime) createWalletAndStore() error {
+func (rt *Runtime) createWalletAndStore() error {
 	var err error
-	utils.LogCombine.Debug().Msgf("creating store %s", cr.ndWalletsPath)
-	cr.store, err = utils.CreateStore(cr.ndWalletsPath)
+	utils.LogCombine.Debug().Msgf("creating store %s", rt.ndWalletsPath)
+	rt.store, err = utils.CreateStore(rt.ndWalletsPath)
 	if err != nil {
 		return err
 	}
 	utils.LogCombine.Debug().Msg("creating ndwallet")
-	cr.wallet, err = utils.CreateNDWallet(cr.store)
+	rt.wallet, err = utils.CreateNDWallet(rt.store)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (cr *CombineRuntime) checkSignature() error {
-	for accountName, account := range cr.accountDatas {
+func (rt *Runtime) checkSignature() error {
+	for accountName, account := range rt.accountDatas {
 		utils.LogCombine.Debug().Msgf("recover private key for account %s", accountName)
-		key, err := bls.Recover(cr.ctx, account.Accounts)
+		key, err := bls.Recover(rt.ctx, account.Accounts)
 		if err != nil {
 			return err
 		}
 
 		utils.LogCombine.Debug().Msgf("bls sing for account %s", accountName)
-		initialSignature, err := bls.Sign(cr.ctx, account.Accounts)
+		initialSignature, err := bls.Sign(rt.ctx, account.Accounts)
 		if err != nil {
 			return err
 		}
 
 		utils.LogCombine.Debug().Msgf("creating nd account for account %s", accountName)
-		finalAccount, err := utils.CreateNDAccount(cr.wallet, accountName, key, cr.passphrasesOut[0])
+		finalAccount, err := utils.CreateNDAccount(rt.wallet, accountName, key, rt.passphrasesOut[0])
 		if err != nil {
 			return err
 		}
 
 		utils.LogCombine.Debug().Msgf("signing message for account %s", accountName)
-		finalSignature, err := utils.AccountSign(cr.ctx, finalAccount, cr.passphrasesOut)
+		finalSignature, err := utils.AccountSign(rt.ctx, finalAccount, rt.passphrasesOut)
 		if err != nil {
 			return err
 		}
@@ -155,11 +155,11 @@ func (cr *CombineRuntime) checkSignature() error {
 	return nil
 }
 
-func (cr *CombineRuntime) storeUpdater() error {
-	for _, store := range cr.stores {
+func (rt *Runtime) storeUpdater() error {
+	for _, store := range rt.stores {
 		var participantID uint64
-		for id := range cr.peers {
-			peerExists, err := regexp.MatchString(filepath.Base(store.Location)+":.*", cr.peers[id])
+		for id := range rt.peers {
+			peerExists, err := regexp.MatchString(filepath.Base(store.Location)+":.*", rt.peers[id])
 			if err != nil {
 				return err
 			}
@@ -170,15 +170,15 @@ func (cr *CombineRuntime) storeUpdater() error {
 
 			for _, wallet := range store.Wallets {
 				utils.LogCombine.Debug().Msgf("loading data for wallet %s", wallet.Name())
-				for account := range wallet.Accounts(cr.ctx) {
+				for account := range wallet.Accounts(rt.ctx) {
 					utils.LogCombine.Debug().Msgf("get private key for account %s", account.Name())
-					key, err := utils.GetAccountKey(cr.ctx, account, cr.passphrasesOut)
+					key, err := utils.GetAccountKey(rt.ctx, account, rt.passphrasesOut)
 					if err != nil {
 						return err
 					}
 
 					utils.LogCombine.Debug().Msgf("sign message from account %s", account.Name())
-					initialSignature, err := utils.AccountSign(cr.ctx, account, cr.passphrasesOut)
+					initialSignature, err := utils.AccountSign(rt.ctx, account, rt.passphrasesOut)
 					if err != nil {
 						return err
 					}
@@ -188,15 +188,15 @@ func (cr *CombineRuntime) storeUpdater() error {
 						return err
 					}
 
-					cr.accountDatas[account.Name()] = AccountExtends{
-						Accounts: append(cr.accountDatas[account.Name()].Accounts,
+					rt.accountDatas[account.Name()] = AccountExtends{
+						Accounts: append(rt.accountDatas[account.Name()].Accounts,
 							utils.Account{
 								Key:       key,
 								Signature: initialSignature,
 								ID:        participantID,
 							},
 						),
-						CompositePubKeys: append(cr.accountDatas[account.Name()].CompositePubKeys, compositePubKey),
+						CompositePubKeys: append(rt.accountDatas[account.Name()].CompositePubKeys, compositePubKey),
 					}
 				}
 			}

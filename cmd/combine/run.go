@@ -4,34 +4,34 @@ import "github.com/p2p-org/dkc/utils"
 
 func Run() error {
 	utils.LogCombine.Info().Msg("validating config")
-	combineRuntime, err := newCombineRuntime()
+	rt, err := newRuntime()
 	if err != nil {
 		utils.LogCombine.Err(err).Send()
 		return err
 	}
 
-	err = combineRuntime.validate()
+	err = rt.validate()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err
 	}
 
 	utils.LogCombine.Info().Msg("creating wallets")
-	err = combineRuntime.createWalletAndStore()
+	err = rt.createWalletAndStore()
 	if err != nil {
 		utils.LogCombine.Err(err).Send()
 		return err
 	}
 
 	utils.LogCombine.Info().Msg("updating stores")
-	err = combineRuntime.storeUpdater()
+	err = rt.storeUpdater()
 	if err != nil {
 		utils.LogCombine.Err(err).Send()
 		return err
 	}
 
 	utils.LogCombine.Info().Msg("checking signatures")
-	err = combineRuntime.checkSignature()
+	err = rt.checkSignature()
 	if err != nil {
 		utils.LogCombine.Err(err).Send()
 		return err

@@ -4,41 +4,41 @@ import "github.com/p2p-org/dkc/utils"
 
 func Run() error {
 	utils.LogSplit.Info().Msg("validating config")
-	splitRuntime, err := newSplitRuntime()
+	rt, err := newRuntime()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err
 	}
 
-	err = splitRuntime.validate()
+	err = rt.validate()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err
 	}
 
 	utils.LogSplit.Info().Msg("loading wallets")
-	err = splitRuntime.loadWallets()
+	err = rt.loadWallets()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err
 	}
 
 	utils.LogSplit.Info().Msg("creating wallets")
-	err = splitRuntime.createWallets()
+	err = rt.createWallets()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err
 	}
 
 	utils.LogSplit.Info().Msg("saving accounts")
-	err = splitRuntime.saveAccounts()
+	err = rt.saveAccounts()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err
 	}
 
 	utils.LogSplit.Info().Msg("checking signatures")
-	err = splitRuntime.checkSignature()
+	err = rt.checkSignature()
 	if err != nil {
 		utils.LogSplit.Err(err).Send()
 		return err
