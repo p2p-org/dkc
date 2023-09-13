@@ -9,7 +9,7 @@ env:
 
 jobs:
   tests-and-linters:
-    uses: ./.github/workflows/build.yaml
+    uses: ./.github/workflows/tests.yaml
 
   prepare:
     name: Prepare Variables

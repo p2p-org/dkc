@@ -5,10 +5,10 @@ import (
 	"encoding/hex"
 	"regexp"
 
+	"github.com/google/uuid"
 	"github.com/p2p-org/dkc/utils"
 	"github.com/p2p-org/dkc/utils/crypto/bls"
 	"github.com/spf13/viper"
-	"github.com/google/uuid"
 )
 
 type SplitRuntime struct {
