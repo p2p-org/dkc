@@ -17,6 +17,7 @@ type DWalletConfig struct {
 	Passphrases string
 	Peers       Peers
 	Threshold   uint32
+	WalletName  string
 }
 
 func GetAccountsPasswords(path string) ([][]byte, error) {

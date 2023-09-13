@@ -22,6 +22,7 @@ type SplitRuntime struct {
 	threshold      uint32
 	walletsMap     map[uint64]utils.DWallet
 	peersIDs       []uint64
+	walletName     string
 }
 
 type AccountExtends struct {
@@ -64,6 +65,7 @@ func newSplitRuntime() (*SplitRuntime, error) {
 	sr.dWalletsPath = dWalletConfig.Path
 	sr.ndWalletsPath = ndWalletConfig.Path
 	sr.threshold = dWalletConfig.Threshold
+	sr.walletName = dWalletConfig.WalletName
 	utils.LogSplit.Debug().Msgf("getting input passwords from %s", ndWalletConfig.Passphrases)
 	sr.passphrasesIn, err = utils.GetAccountsPasswords(ndWalletConfig.Passphrases)
 	if err != nil {
@@ -96,6 +98,9 @@ func (sr *SplitRuntime) validate() error {
 
 func (sr *SplitRuntime) createWallets() error {
 	walletName := uuid.New().String()
+	if sr.walletName != "" {
+		walletName = sr.walletName
+	}
 	for id, peer := range sr.peers {
 		res, err := regexp.Compile(`:.*`)
 		if err != nil {
