@@ -19,7 +19,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "dkc",
 	Short: "Dirk Key Converter",
-	Long:  `Allow to split and combine keystores and distributed wallets for Dirk`,
+	Long:  `Allow to convert wallets between different types`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 	},
 }

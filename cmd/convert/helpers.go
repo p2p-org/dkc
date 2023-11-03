@@ -1,4 +1,4 @@
-package combine
+package convert
 
 import (
 	"context"
@@ -8,52 +8,32 @@ import (
 	"github.com/p2p-org/dkc/utils"
 	"github.com/p2p-org/dkc/utils/crypto/bls"
 	"github.com/spf13/viper"
-	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
-type AccountExtends struct {
-	PubKey           []byte
-	CompositePubKeys [][]byte
-	Accounts         []utils.Account
-}
-
-type CombineRuntime struct {
-	ctx            context.Context
-	dWalletsPath   string
-	ndWalletsPath  string
-	passphrasesIn  [][]byte
-	passphrasesOut [][]byte
-	accountDatas   map[string]AccountExtends
-	stores         []utils.DirkStore
-	peers          utils.Peers
-	wallet         utils.NDWallet
-	store          types.Store
-}
-
-func newCombineRuntime() (*CombineRuntime, error) {
-	cr := &CombineRuntime{}
+func newConvertRuntime() (*ConvertRuntime, error) {
+	cr := &utils.ConvertRuntime{}
 	var err error
 
-	utils.LogCombine.Debug().Msg("validating nd-wallets field")
-	var ndWalletConfig utils.NDWalletConfig
-	err = viper.UnmarshalKey("nd-wallets", &ndWalletConfig)
+	utils.LogConvert.Debug().Msg("validating input wallet")
+	var inputW utils.W
+	err = viper.UnmarshalKey("input", &inputW)
 	if err != nil {
 		return nil, err
 	}
 
-	err = ndWalletConfig.Validate()
+	err = inputW.Validate()
 	if err != nil {
 		return nil, err
 	}
 
-	utils.LogCombine.Debug().Msg("validating distributed-wallets field")
-	var dWalletConfig utils.DWalletConfig
-	err = viper.UnmarshalKey("distributed-wallets", &dWalletConfig)
+	utils.LogConvert.Debug().Msg("validating output field")
+	var outputW utils.W
+	err = viper.UnmarshalKey("output", &outputW)
 	if err != nil {
 		return nil, err
 	}
 
-	err = dWalletConfig.Validate()
+	err = outputW.Validate()
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +63,7 @@ func newCombineRuntime() (*CombineRuntime, error) {
 	return cr, nil
 }
 
-func (cr *CombineRuntime) validate() error {
+func (cr *utils.ConvertRuntime) validate() error {
 	if cr.dWalletsPath == cr.ndWalletsPath {
 		return utils.ErrorSameDirs
 	}
