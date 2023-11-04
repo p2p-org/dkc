@@ -14,60 +14,25 @@ func newConvertRuntime() (*ConvertRuntime, error) {
 	cr := &utils.ConvertRuntime{}
 	var err error
 
-	utils.LogConvert.Debug().Msg("validating input wallet")
+	utils.LogConvert.Debug().Msg("getting input wallet paths")
 	var inputW utils.W
 	err = viper.UnmarshalKey("input", &inputW)
 	if err != nil {
 		return nil, err
 	}
 
-	err = inputW.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	utils.LogConvert.Debug().Msg("validating output field")
+	utils.LogConvert.Debug().Msg("getting output wallet paths")
 	var outputW utils.W
 	err = viper.UnmarshalKey("output", &outputW)
 	if err != nil {
 		return nil, err
 	}
 
-	err = outputW.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	cr.ctx = context.Background()
-	cr.dWalletsPath = dWalletConfig.Path
-	cr.ndWalletsPath = ndWalletConfig.Path
-	utils.LogCombine.Debug().Msgf("getting input passwords form file %s", dWalletConfig.Passphrases)
-	cr.passphrasesIn, err = utils.GetAccountsPasswords(dWalletConfig.Passphrases)
-	if err != nil {
-		return nil, err
-	}
-	utils.LogCombine.Debug().Msgf("getting output passwords form file %s", ndWalletConfig.Passphrases)
-	cr.passphrasesOut, err = utils.GetAccountsPasswords(ndWalletConfig.Passphrases)
-	if err != nil {
-		return nil, err
-	}
-	cr.accountDatas = make(map[string]AccountExtends)
-	utils.LogCombine.Debug().Msgf("loading stores form %s", cr.dWalletsPath)
-	cr.stores, err = utils.LoadStores(cr.ctx, cr.dWalletsPath, cr.passphrasesIn)
-	if err != nil {
-		return nil, err
-	}
-
-	cr.peers = dWalletConfig.Peers
+	cr.InputW = inputW
+	cr.OutputW = outputW
+	cr.Ctx = context.Background()
 
 	return cr, nil
-}
-
-func (cr *utils.ConvertRuntime) validate() error {
-	if cr.dWalletsPath == cr.ndWalletsPath {
-		return utils.ErrorSameDirs
-	}
-	return nil
 }
 
 func (cr *CombineRuntime) createWalletAndStore() error {

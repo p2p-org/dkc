@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"os"
 
 	"github.com/pkg/errors"
@@ -20,6 +21,60 @@ type DWalletConfig struct {
 	WalletName  string
 }
 
+type W struct {
+	Path        string
+	Type        string
+	Passphrases string
+}
+
+type ConvertRuntime struct {
+	Ctx     context.Context
+	InputW  W
+	OutputW W
+}
+
+func (W *W) wValidate() error {
+	if W.Path == "" {
+		return ErrorPathField
+	}
+
+	if W.Type == "" {
+		return ErrorEmptyType
+	}
+
+	if len(W.Passphrases) == 0 {
+		return ErrorPassphraseEmpty
+	}
+
+	return nil
+
+}
+
+func (CR *ConvertRuntime) Validate() error {
+	LogConvert.Debug().Msg("validating input wallet")
+	CR.InputW.wValidate()
+	if CR.InputW.Passphrases == "" {
+		return ErrorInputPassphrasesIsEmpty
+	}
+
+	LogConvert.Debug().Msg("validating output wallet")
+	CR.OutputW.wValidate()
+	if CR.OutputW.Passphrases == "" {
+		return ErrorOutputPassphrasesIsEmpty
+	}
+
+	LogConvert.Debug().Msg("validating types for both wallets")
+	if CR.InputW.Type != CR.OutputW.Type {
+		return ErrorSameWalletType
+	}
+
+	LogConvert.Debug().Msg("validating dirs for both wallets")
+	if CR.OutputW.Path != CR.OutputW.Path {
+		return ErrorSameDirs
+	}
+
+	return nil
+}
 func GetAccountsPasswords(path string) ([][]byte, error) {
 
 	content, err := os.ReadFile(path)
