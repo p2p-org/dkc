@@ -16,14 +16,14 @@ func newConvertRuntime() (*ConvertRuntime, error) {
 
 	utils.LogConvert.Debug().Msg("getting input wallet paths")
 	var inputW utils.W
-	err = viper.UnmarshalKey("input", &inputW)
+	err = viper.UnmarshalKey("input.wallet", &inputW)
 	if err != nil {
 		return nil, err
 	}
 
 	utils.LogConvert.Debug().Msg("getting output wallet paths")
 	var outputW utils.W
-	err = viper.UnmarshalKey("output", &outputW)
+	err = viper.UnmarshalKey("output.wallet", &outputW)
 	if err != nil {
 		return nil, err
 	}

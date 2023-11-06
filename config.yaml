@@ -1,16 +1,22 @@
 input:
-  type: distributed
-  path: DISTRIBUTED_WALLETS
-  passphrases: ./passphrases.txt
-  opts:
+  store:
+    path: DISTRIBUTED_WALLETS
+  wallet:
+    type: distributed
+    passphrases: 
+      path: ./input_wallet_passphrases.txt
     threshold: 2
     peers:
       10: old1:9091
       20: old2:9091
       30: old3:9091
 output:
-  type: nd
-  path: ND_WALLETS
-  passphrases: ./passphrases.txt
+  store:
+    path: ND_WALLETS
+  wallet:
+    type: nd
+    passphrases: 
+      path: ./output_wallet_passphrases.txt
+    
 log-level: debug
 

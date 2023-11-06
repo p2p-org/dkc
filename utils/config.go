@@ -8,46 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-type NDWalletConfig struct {
-	Path        string
-	Passphrases string
-}
-
-type DWalletConfig struct {
-	Path        string
-	Passphrases string
-	Peers       Peers
-	Threshold   uint32
-	WalletName  string
-}
-
-type W struct {
-	Path        string
-	Type        string
-	Passphrases string
-}
-
 type ConvertRuntime struct {
 	Ctx     context.Context
-	InputW  W
-	OutputW W
-}
-
-func (W *W) wValidate() error {
-	if W.Path == "" {
-		return ErrorPathField
-	}
-
-	if W.Type == "" {
-		return ErrorEmptyType
-	}
-
-	if len(W.Passphrases) == 0 {
-		return ErrorPassphraseEmpty
-	}
-
-	return nil
-
+	InputW  InputWalletWrapper
+	OutputW OutputWalletWrapper
 }
 
 func (CR *ConvertRuntime) Validate() error {
@@ -75,6 +39,7 @@ func (CR *ConvertRuntime) Validate() error {
 
 	return nil
 }
+
 func GetAccountsPasswords(path string) ([][]byte, error) {
 
 	content, err := os.ReadFile(path)
@@ -88,47 +53,4 @@ func GetAccountsPasswords(path string) ([][]byte, error) {
 		return nil, errors.Wrap(err, ErrorDWalletStructWrapper)
 	}
 	return accountsPasswords, nil
-}
-
-func (data *NDWalletConfig) Validate() error {
-	if data.Path == "" {
-		err := ErrorPathField
-		return errors.Wrap(err, ErrorNDWalletStructWrapper)
-	}
-
-	if data.Passphrases == "" {
-		err := ErrorPassphrasesField
-		return errors.Wrap(err, ErrorNDWalletStructWrapper)
-	}
-
-	return nil
-}
-
-func (data *DWalletConfig) Validate() error {
-	if data.Path == "" {
-		err := ErrorPathField
-		return errors.Wrap(err, ErrorDWalletStructWrapper)
-	}
-
-	if data.Passphrases == "" {
-		err := ErrorPassphrasesField
-		return errors.Wrap(err, ErrorDWalletStructWrapper)
-	}
-
-	if len(data.Peers) == 0 {
-		err := ErrorPeersField
-		return errors.Wrap(err, ErrorDWalletStructWrapper)
-	}
-
-	if data.Threshold == 0 {
-		err := ErrorThresholdField
-		return errors.Wrap(err, ErrorDWalletStructWrapper)
-	}
-
-	if len(data.Peers) < int(data.Threshold) {
-		err := ErrorNotEnoughPeers
-		return errors.Wrap(err, ErrorDWalletStructWrapper)
-	}
-
-	return nil
 }
