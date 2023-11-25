@@ -12,7 +12,7 @@
       inherit pname version;
       src = ../.;
 
-      vendorHash = "sha256-EtGm+9jpGGB+/aUzIyFfe3ZbyhqliL3G9qJBf2nKseY=";
+      vendorHash = "sha256-U2C3yuC0KE6bd7xURjW7uA4wGlQ92BXRpfHuV3CBjzA=";
 
       buildInputs = [mcl bls];
 

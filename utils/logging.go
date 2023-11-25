@@ -11,14 +11,9 @@ import (
 
 var Log zerolog.Logger
 
-var LogSplit zerolog.Logger
-var LogCombine zerolog.Logger
-
-func InitLogging() {
+func InitLogging(cmd string) {
 	Log = zerologger.With().Logger().Level(logLevel(viper.GetString("log-level"))).Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	LogSplit = Log.With().Str("cmd", "split").Logger()
-	LogCombine = Log.With().Str("cmd", "combine").Logger()
-
+	Log = Log.With().Str("cmd", cmd).Logger()
 }
 
 func logLevel(input string) zerolog.Level {

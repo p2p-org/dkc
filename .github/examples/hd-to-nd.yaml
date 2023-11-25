@@ -1,0 +1,17 @@
+input:
+  store:
+    path: ./hd-to-nd/hd
+  wallet:
+    type: hierarchical deterministic
+    passphrases:
+      path: ./hd-to-nd/pass.txt
+
+output:
+  store:
+    path: ./hd-to-nd/nd
+  wallet:
+    type: non-deterministic
+    passphrases:
+      path: ./hd-to-nd/pass.txt
+
+log-level: debug

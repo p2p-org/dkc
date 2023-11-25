@@ -12,3 +12,6 @@ dkc
 podman-data
 keystores
 .key
+
+#Mac
+.DS_Store

@@ -9,6 +9,14 @@ on:
 
 jobs:
   functional-tests:
+    strategy:
+      matrix:
+        type: [
+          "distributed-to-nd",
+          "nd-to-distributed",
+          "hd-to-nd",
+          "hd-to-distributed",
+          ]
     defaults:
       run:
         working-directory: './.github/examples/'
@@ -26,82 +34,158 @@ jobs:
         run: |
           go install "github.com/wealdtech/ethdo@$ethdo_version"
         env:
-          ethdo_version: 'v1.28.5'
-      - name: 'Get Original Wallets'
+          ethdo_version: 'v1.33.2'
+      - name: 'Converting ${{matrix.type}}'
         run: |
-          #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          account_pubkey_map='{}'
-          accounts_list=$(ethdo wallet --base-dir "${input_distributed_wallets_path}/old1" accounts --wallet="$wallet_name" | tr '\n' ' ')
-          echo -e "#  Original Keys"
-          for i in $(echo $accounts_list); do
-            original_key=$(ethdo account --base-dir "${input_distributed_wallets_path}/old1/" info --account "$wallet_name/$i" | grep -i "Composite public key:" | awk '{print $NF}')
-            if [[ -z "$original_key" ]]; then
-              echo -e "Account [$i]: ${red}Fail${nc} (len($original_key) == 0)"
+          ./dkc convert --config ${{matrix.type}}.yaml
+
+      - name: 'Preparing Variables For ${{matrix.type}}'
+        run: |
+          echo "::debug:: Getting passwords from ./${{matrix.type}}/pass.txt"
+          passphrases=$(cat "./${{matrix.type}}/pass.txt"|tr '\n' ',')
+          echo "::debug:: password string is [$passphrases]"
+
+          echo "::debug:: Getting input type for wallet"
+          input_type=$(echo ${{ matrix.type }} | awk -F'-' '{print $1}')
+          echo "::debug:: Input type for wallet is [$input_type]"
+
+          echo "::debug:: Getting input path for wallet"
+          input_path="./${{ matrix.type }}/$input_type"
+          echo "::debug:: Input path for wallet is [$input_path]"
+
+          echo "::debug:: Getting output type for wallet"
+          output_type=$(echo ${{ matrix.type }} | awk -F'-' '{print $3}')
+          echo "::debug:: Output type for wallet is [$output_type]"
+
+          echo "::debug:: Getting output path for wallet"
+          output_path="./${{ matrix.type }}/$output_type"
+          echo "::debug:: Output path for wallet is [$output_path]"
+
+          echo -e "Generating Input And Output Paths:  ${green}OK${nc}"
+
+          echo -e "${green}Input Path:${nc}  [$input_path]"
+          echo -e "${green}Output Path:${nc}  [$output_path]"
+
+          echo "::debug:: Adding all variables to GITHUB EVN"
+
+          echo "passphrases=$passphrases" >> $GITHUB_ENV
+
+          echo "input_path=$input_path" >> $GITHUB_ENV
+          echo "input_type=$input_type" >> $GITHUB_ENV
+
+          echo "output_path=$output_path" >> $GITHUB_ENV
+          echo "output_type=$output_type" >> $GITHUB_ENV
+
+      - name: 'Checking Signatures For ${{matrix.type}}'
+        run: |
+
+         get_signature() {
+              echo "::debug:: Wallet type is [$1]"
+              local _type=$1
+              echo "::debug:: Wallet path is [$2]"
+              local _path=$2
+
+              echo "::debug:: Check number of argumetns [$#] for get_signature function"
+              if ! [ $# -eq 2 ]; then
+                echo -e "Number Of Arguments Incorrect: ${red}Fail${nc}"
+              fi
+
+              local _signature
+
+              echo "::debug:: Check wallet type [$_type]"
+              case $_type in
+
+                "distributed")
+                  echo "::debug:: Wallet is distirbuted"
+
+                  echo "::debug:: Get local sig1"
+                  local _sig1=$(ethdo signature sign --base-dir "$_path/$peer_1" --account "$w/$a" --data "${sign_data}" --passphrase "${passphrases}")
+                  echo "::debug:: Local sig1 is [$_sig1]"
+
+                  echo "::debug:: Get local sig2"
+                  local _sig2=$(ethdo signature sign --base-dir "$_path/$peer_2" --account "$w/$a" --data "${sign_data}" --passphrase "${passphrases}")
+                  echo "::debug:: Local sig2 is [$_sig2]"
+
+                  echo "::debug:: Get signature"
+                  _signature=$(ethdo signature aggregate --signature "$peer_id_1:$_sig1" --signature "$peer_id_2:$_sig2" --data "${sign_data}")
+                  ;;
+
+                *)
+                  echo "::debug:: Wallet is not distirbuted"
+
+                  echo "::debug:: Get signature"
+                  _signature=$(ethdo signature sign --base-dir "$_path" --account "$w/$a" --data "${sign_data}" --passphrase "${passphrases}")
+                  ;;
+              esac
+
+              echo $_signature
+          }
+
+          echo "::debug:: Wallets List is [$wallets_list]"
+
+          echo "::debug:: Checking if Wallets List is not empty"
+          if [[ "$wallets_list" == "" ]]; then
+            echo -e "Wallets List Is Empty: ${red}Fail${nc}"
+            exit 1
+          fi
+
+          echo -e "Getting Wallets:  ${green}OK${nc}"
+
+          echo "::debug:: Iterate over Wallets List"
+          for w in $wallets_list; do
+            echo "::debug:: Current wallet is [$w]"
+
+            echo "::debug:: Accounts List for wallet [$w] is [$accounts_list]"
+
+            echo "::debug:: Checking if Accounts List is not empty"
+            if [[ "accounts_list" == "" ]]; then
+              echo -e "Accounts List For Wallet [$w] Is Empty: ${red}Fail${nc}"
               exit 1
             fi
-            #Tricky way to create hashmap(bash declare is not working here)
-            account_pubkey_map=$(echo ${account_pubkey_map} | jq -c --arg account $i --arg key $original_key '. + { ($account): $key }')
 
-            echo -e "Account [$i]: $original_key"
-          done;
-          echo "account_pubkey_map=${account_pubkey_map}" >> $GITHUB_ENV
+            echo "::debug:: Iterate over Accounts List"
+            for a in $accounts_list; do
+              echo "::debug:: Current account is [$a]"
 
-      - name: 'Prepare configs'
-        run: |
-          #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          cp config.yaml config-combine.yaml
-          cp config.yaml config-split.yaml
-          #Split Config
-          sed -i "s,DISTRIBUTED_WALLETS,$input_distributed_wallets_path,g" config-combine.yaml
-          sed -i "s,ND_WALLETS,$output_nd_wallets_path,g" config-combine.yaml
-          #Combine Config
-          sed -i "s,DISTRIBUTED_WALLETS,$output_distributed_wallets_path,g" config-split.yaml
-          sed -i "s,ND_WALLETS,$output_nd_wallets_path,g" config-split.yaml
+              echo "::debug:: Get input signature"
+              input_signature=$(get_signature $input_type $input_path | tail -n 1)
+              echo "::debug:: Input signature is [$input_signature]"
 
-      - name: 'COMBINE Function Test'
-        run: |
-          #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          #Combine
-          ./dkc combine --config=config-combine.yaml
-          #Compare Composite Pubkey from original accounts to newly created accounts
-          restored_wallet=$(ethdo wallet --base-dir "${output_nd_wallets_path}" list |head -n 1)
-          echo -e "#  Combine Tests"
-          for account in $(echo "${account_pubkey_map}" | jq -r 'keys []'); do
-            original_key=$(echo "${account_pubkey_map}" | jq -r --arg account $account '.[$account]')
-            restored_key=$(ethdo account --base-dir "${output_nd_wallets_path}" info --account "$restored_wallet/$account" | grep -i "Public key:" | awk '{print $NF}')
+              echo "::debug:: Get output signature"
+              output_signature=$(get_signature $output_type $output_path | tail -n 1)
+              echo "::debug:: Output signature is [$output_signature]"
 
-            if [[ "$original_key" != "$restored_key" ]]; then
-              echo -e "Account [$account]: ${red}Fail${nc} ($original_key != $restored_key)"
-              exit 1
-            fi
+              echo "::debug:: Check if input signature has the right format"
+              if ! [[ "$input_signature" =~ ^0x.*$ ]]; then
+                echo -e "Input Signature For Account [$w/$a] Has Wrong Format: ${red}Fail${nc}"
+                exit 1
+              fi
 
-            echo -e "Account [$account]: ${green}OK${nc}"
+              echo "::debug:: Check if output signature has the right format"
+              if ! [[ "$output_signature" =~ ^0x.*$ ]]; then
+                echo -e "Output Signature For Account [$w/$a] Has Wrong Format: ${red}Fail${nc}"
+                exit 1
+              fi
+
+              echo "::debug:: Compare input signature and output signature"
+              if [[ "$input_signature" != "$output_signature" ]]; then
+                echo -e "Failed To Verify Signature For Account [$w/$a]: ${red}Fail${nc}"
+                exit 1
+              fi
+
+              echo -e "Checking Signature For Account [$w/$a]: ${green}OK${nc}"
+            done;
           done;
 
-      - name: 'Split Function Test'
-        run: |
-          #FIXME set -e is the default bash flag(this is not obvious btw need to fix)
-          #Split
-          ./dkc split --config=config-split.yaml
-          #Compare Composite Pubkey from original accounts to newly created accounts
-          splited_wallet=$(ethdo wallet --base-dir "${output_distributed_wallets_path}/old1/" list |head -n 1)
-          echo -e "#  Split Tests"
-          for account in $(echo "${account_pubkey_map}" | jq -r 'keys []'); do
-            original_key=$(echo "${account_pubkey_map}" | jq -r --arg account $account '.[$account]')
-            splited_key=$(ethdo account --base-dir "${output_distributed_wallets_path}/old1/" info --account "$splited_wallet/$account" | grep -i "Composite public key:" | awk '{print $NF}')
-
-            if [[ "$original_key" != "$splited_key" ]]; then
-              echo -e "Account [$account]: ${red}Fail${nc} ($original_key != $splited_key)"
-              exit 1
-            fi
-
-            echo -e "Account [$account]: ${green}OK${nc}"
-          done;
     env:
-      wallet_name: 'DW'
-      input_distributed_wallets_path: './wallets'
-      output_nd_wallets_path: './nd_wallets'
-      output_distributed_wallets_path: './distributed_wallets'
       red: '\033[0;31m'
       green: '\033[0;32m'
+      yellow: '\033[0;33m'
       nc: '\033[0m'
+      sign_data: '0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'
+      wallets_list: "Wallet1 Wallet2 Wallet3"
+      accounts_list: "Account1 Account2 Account3"
+      peer_1: "test1"
+      peer_id_1: "10"
+      peer_2: "test2"
+      peer_id_2: "20"
