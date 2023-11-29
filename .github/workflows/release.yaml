@@ -8,12 +8,14 @@ env:
   artifacts_name: 'building-artifacts'
 
 jobs:
-  tests-and-linters:
+  tests:
     uses: ./.github/workflows/tests.yaml
+  func-tests:
+    uses: ./.github/workflows/func-tests.yaml
 
   prepare:
     name: Prepare Variables
-    needs: tests-and-linters
+    needs: [tests, func-tests]
     runs-on: ubuntu-latest
     outputs:
       release_version: ${{ steps.enver.outputs.release_version }}
