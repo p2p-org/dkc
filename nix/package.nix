@@ -7,7 +7,7 @@
   }: let
     inherit (inputs'.ethereum-nix.packages) mcl bls;
     pname = "dkc";
-    version = "0.1.1";
+    version = "1.0.0";
     dkc = pkgs.buildGoModule {
       inherit pname version;
       src = ../.;
