@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: ['main']
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   functional-tests:
@@ -23,7 +24,7 @@ jobs:
         shell: bash
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: 'Build dkc script'
         uses: actions/setup-go@v4
         with:
