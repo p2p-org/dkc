@@ -36,21 +36,28 @@ to:
 
 Binaries for the latest version of `dkc` can be obtained from [the releases page](https://github.com/p2p-org/dkc/releases/latest).
 
+### Nix
+
+If you have nix flakes enabled you can run `dkc` using this command:
+
+```sh
+$ nix run github:p2p-org/dkc
+```
+
 ### Source
 
 `dkc` can be built locally using the command
 
 ```sh
-go build .
+$ go build .
 ```
+
 ## Usage
 
 > [!CAUTION]
 > Before you begin, make sure you backup keys and store recovered wallets and passwords securely.
 
-`dkc` uses [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary). Some research code of using [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary) in `dkc` is available [here](./research/research.go) 
-
-You can test `dkc` on predefiened inputs [here](.github/workflows/func-tests.yml). 
+`dkc` uses [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary). You can test `dkc` on predefiened inputs [here](.github/workflows/func-tests.yml). 
 
 ### Config
 
@@ -58,9 +65,9 @@ An example config for each pair could be found [here](.github/examples/)
 
 The example below shows how to convert wallets from `distributed` type to `hierarchical deterministic` type. 
 
-`Base-dir` for `distributed` wallets is located in `./i_wallet` see more info about `distributed` wallet file structure [here](#distributed)
+`base-dir` for `distributed` wallets is located in `./i_wallet` see more info about `distributed` wallet file structure [here](#distributed)
 
-`Base-dir` for `hierarchical deterministic` wallets is located in `./o_wallet` see more info about `hierarchical deterministic` wallet file structure [here](#hierarchical-deterministic)
+`base-dir` for `hierarchical deterministic` wallets is located in `./o_wallet` see more info about `hierarchical deterministic` wallet file structure [here](#hierarchical-deterministic)
 
 ```yaml
 input:                              #Input section
