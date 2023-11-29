@@ -1,0 +1,28 @@
+input:
+  store:
+    path: ./hd-to-distributed/hd
+  wallet:
+    type: hierarchical deterministic
+    passphrases:
+      path: ./hd-to-distributed/pass.txt
+
+output:
+  store:
+    path: ./hd-to-distributed/distributed
+  wallet:
+    type: distributed
+    threshold: 2
+    peers:
+      10:
+        name: test1:9091
+        passphrases:
+          path: ./hd-to-distributed/pass.txt
+      20:
+        name: test2:9091
+        passphrases:
+          path: ./hd-to-distributed/pass.txt
+      30:
+        name: test3:9091
+        passphrases:
+          path: ./hd-to-distributed/pass.txt
+log-level: debug

@@ -1,8 +1,3 @@
 {
-  imports = [
-    ./formatter.nix
-    ./package.nix
-    ./pre-commit.nix
-    ./shell.nix
-  ];
+  imports = [./formatter.nix ./package.nix ./pre-commit.nix ./shell.nix];
 }

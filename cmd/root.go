@@ -53,6 +53,6 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err == nil {
-		utils.InitLogging()
+		utils.InitLogging(string(rootCmd.Name()))
 	}
 }

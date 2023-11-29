@@ -2,7 +2,7 @@
   imports = [
     inputs.pre-commit-hooks-nix.flakeModule
   ];
-  perSystem = _: {
+  perSystem = {
     pre-commit.settings = {
       hooks = {
         alejandra.enable = true;
