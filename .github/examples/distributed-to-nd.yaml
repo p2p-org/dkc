@@ -1,0 +1,28 @@
+input:
+  store:
+    path: ./distributed-to-nd/distributed
+  wallet:
+    type: distributed
+    threshold: 2
+    peers:
+      10:
+        name: test1:9091
+        passphrases:
+          path: ./distributed-to-nd/pass.txt
+      20:
+        name: test2:9091
+        passphrases:
+          path: ./distributed-to-nd/pass.txt
+      30:
+        name: test3:9091
+        passphrases:
+          path: ./distributed-to-nd/pass.txt
+output:
+  store:
+    path: ./distributed-to-nd/nd
+  wallet:
+    type: non-deterministic
+    passphrases:
+      path: ./distributed-to-nd/pass.txt
+
+log-level: debug

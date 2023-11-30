@@ -13,5 +13,5 @@ podman-data
 keystores
 .key
 
-#MAC
+#Mac
 .DS_Store

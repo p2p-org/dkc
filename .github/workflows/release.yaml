@@ -8,12 +8,14 @@ env:
   artifacts_name: 'building-artifacts'
 
 jobs:
-  tests-and-linters:
+  tests:
     uses: ./.github/workflows/tests.yaml
+  func-tests:
+    uses: ./.github/workflows/func-tests.yaml
 
   prepare:
     name: Prepare Variables
-    needs: tests-and-linters
+    needs: [tests, func-tests]
     runs-on: ubuntu-latest
     outputs:
       release_version: ${{ steps.enver.outputs.release_version }}
@@ -40,7 +42,7 @@ jobs:
       release_version: ${{needs.prepare.outputs.release_version}}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: 'Setup Go'
         uses: actions/setup-go@v4
@@ -81,7 +83,7 @@ jobs:
       release_version: ${{needs.prepare.outputs.release_version}}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Download artifacts
         uses: actions/download-artifact@v3
@@ -89,7 +91,7 @@ jobs:
           name: ${{ env.artifacts_name }}
 
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v1.1.1
+        uses: saadmk11/changelog-ci@v1.1.2
         with:
           release_version: ${{ env.release_version }}
 
