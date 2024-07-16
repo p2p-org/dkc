@@ -48,13 +48,18 @@ func process(data *dataIn) error {
 		wgA.Add(1)
 		go func(aName string, wName string) {
 			defer wgA.Done()
+			var aPK a
 			// Get Private Key From Account
 			utils.Log.Info().Msgf("getting private key for account %s from wallet %s", aName, wName)
 			pk, err := iStore.GetPK(wName, aName)
 			if err != nil {
-				aPKMap <- a{name: aName, pk: []byte{}, err: err, wName: wName}
+				utils.Log.Error().Err(err).Msgf("failed to get private key for account %s from wallet %s", aName, wName)
+				aPK = a{name: aName, pk: []byte{}, err: err, wName: wName}
+			} else {
+				utils.Log.Info().Msgf("got private key for account %s from wallet %s", aName, wName)
+				aPK = a{name: aName, pk: pk, err: nil, wName: wName}
 			}
-			aPKMap <- a{name: aName, pk: pk, err: nil, wName: wName}
+			aPKMap <- aPK
 		}(acc.Name, acc.WName)
 	}
 	wgA.Wait()
