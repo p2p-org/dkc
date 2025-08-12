@@ -8,11 +8,13 @@ A command-line tool for converting Ethereum wallets from:
 - [distributed](https://github.com/wealdtech/go-eth2-wallet-distributed)
 - [non-deterministic](https://github.com/wealdtech/go-eth2-wallet-nd)
 - [hierarchical deterministic](https://github.com/wealdtech/go-eth2-wallet-hd)
+- [keystore](https://github.com/wealdtech/go-eth2-wallet-keystore)
 
 to:
 
 - [distributed](https://github.com/wealdtech/go-eth2-wallet-distributed)
 - [non-deterministic](https://github.com/wealdtech/go-eth2-wallet-nd)
+- [keystore](https://github.com/wealdtech/go-eth2-wallet-keystore)
 
 > [!CAUTION]
 > It is highly recommended to refrain from any operations on the validation keys and use the provided script only in critical situations to avoid any ponential risks of slashing.
@@ -74,7 +76,7 @@ input:                              #Input section
   store:                            #Store section
     path: ./i_wallet                #Location of input wallets
   wallet:                           #Wallet section
-    type: distributed               #Type for input wallet. Valid types are: distributed, non-deterministic,hierarchical deterministic
+    type: distributed               #Type for input wallet. Valid types are: distributed, non-deterministic, hierarchical deterministic, keystore
     threshold: 2                    #Threshold number. It must be len(peers)/2 < threshold < len(peers) 
     peers:                          #Peers section
       10:                           #Peer ID is used for generating bls participants
@@ -160,6 +162,31 @@ $ ethdo wallet --base-dir nd-to-distributed/hd list
 Wallet1
 Wallet3
 Wallet2
+```
+
+#### Keystore
+
+This wallet type can be used as input or output wallet. More information about this wallet type is provided [here](https://github.com/wealdtech/go-eth2-wallet-keystore)
+
+Keystore wallets store individual keys non-deterministically in keystore format. The file structure is similar to non-deterministic wallets:
+
+```
+$ ethdo wallet --base-dir keystore-to-distributed/keystore list
+Wallet1
+Wallet2
+Wallet3
+```
+
+Configuration for keystore wallets:
+```yaml
+input:
+  store:
+    path: ./keystore_wallet
+  wallet:
+    type: keystore
+    passphrases:
+      path: ./keystore_passwords.txt
+      index: 0  # Optional: use specific password index
 ```
 
 ### Convert
