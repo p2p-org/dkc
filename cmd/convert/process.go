@@ -80,7 +80,7 @@ func process(data *dataIn) error {
 	for a := range aPKMap {
 
 		if a.err != nil {
-			return err
+			return a.err
 		}
 		// Save Private Key To Output Store
 		utils.Log.Info().Msgf("converting and saving private key for account %s to output wallet %s", a.name, a.wName)
