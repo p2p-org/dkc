@@ -13,10 +13,12 @@ jobs:
     strategy:
       matrix:
         type: [
+          "distributed-to-keystore",
           "distributed-to-nd",
-          "nd-to-distributed",
-          "hd-to-nd",
           "hd-to-distributed",
+          "hd-to-nd",
+          "keystore-to-distributed",
+          "nd-to-distributed",
           ]
     defaults:
       run:
@@ -35,7 +37,7 @@ jobs:
         run: |
           go install "github.com/wealdtech/ethdo@$ethdo_version"
         env:
-          ethdo_version: 'v1.33.2'
+          ethdo_version: 'v1.38.0'
       - name: 'Converting ${{matrix.type}}'
         run: |
           ./dkc convert --config ${{matrix.type}}.yaml
