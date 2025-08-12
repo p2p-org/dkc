@@ -1,7 +1,6 @@
 package convert
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/p2p-org/dkc/utils"
@@ -16,7 +15,7 @@ func process(data *dataIn) error {
 	oStore := data.OutputS
 
 	// Create Output Store
-	utils.Log.Info().Msgf(fmt.Sprintf("creating output store %s", oStore.GetPath()))
+	utils.Log.Info().Msgf("creating output store %s", oStore.GetPath())
 	err := oStore.Create()
 	if err != nil {
 		return errors.Wrap(err, "failed to create output store")

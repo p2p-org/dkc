@@ -1,6 +1,8 @@
 module github.com/p2p-org/dkc
 
-go 1.24
+go 1.24.0
+
+toolchain go1.24.5
 
 require (
 	github.com/herumi/bls-eth-go-binary v1.36.4
