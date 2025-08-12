@@ -7,12 +7,12 @@
   }: let
     inherit (inputs'.ethereum-nix.packages) mcl bls;
     pname = "dkc";
-    version = "1.0.0";
+    version = "1.1.0";
     dkc = pkgs.buildGoModule {
       inherit pname version;
       src = ../.;
 
-      vendorHash = "sha256-U2C3yuC0KE6bd7xURjW7uA4wGlQ92BXRpfHuV3CBjzA=";
+      vendorHash = "sha256-eDx5pYecYnGWXVmLTl4S57hrwQCxk96a4MSN6O+CS30=";
 
       buildInputs = [mcl bls];
 
