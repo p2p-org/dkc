@@ -53,6 +53,13 @@ func InputStoreInit(ctx context.Context, t string) (IStore, error) {
 		}
 		s.Ctx = ctx
 		return &s, nil
+	case "keystore":
+		s, err := newKeystoreStore("input")
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to init keystore store as input store")
+		}
+		s.Ctx = ctx
+		return &s, nil
 	default:
 		return nil, errors.New("incorrect input wallet type")
 	}
@@ -72,6 +79,13 @@ func OutputStoreInit(ctx context.Context, t string) (OStore, error) {
 		s, err := newNDStore("output")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init non-deterministic store as output store")
+		}
+		s.Ctx = ctx
+		return &s, nil
+	case "keystore":
+		s, err := newKeystoreStore("output")
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to init keystore store as output store")
 		}
 		s.Ctx = ctx
 		return &s, nil

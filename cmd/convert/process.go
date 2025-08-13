@@ -1,7 +1,6 @@
 package convert
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/p2p-org/dkc/utils"
@@ -16,7 +15,7 @@ func process(data *dataIn) error {
 	oStore := data.OutputS
 
 	// Create Output Store
-	utils.Log.Info().Msgf(fmt.Sprintf("creating output store %s", oStore.GetPath()))
+	utils.Log.Info().Msgf("creating output store %s", oStore.GetPath())
 	err := oStore.Create()
 	if err != nil {
 		return errors.Wrap(err, "failed to create output store")
@@ -48,13 +47,18 @@ func process(data *dataIn) error {
 		wgA.Add(1)
 		go func(aName string, wName string) {
 			defer wgA.Done()
+			var aPK a
 			// Get Private Key From Account
 			utils.Log.Info().Msgf("getting private key for account %s from wallet %s", aName, wName)
 			pk, err := iStore.GetPK(wName, aName)
 			if err != nil {
-				aPKMap <- a{name: aName, pk: []byte{}, err: err, wName: wName}
+				utils.Log.Error().Err(err).Msgf("failed to get private key for account %s from wallet %s", aName, wName)
+				aPK = a{name: aName, pk: []byte{}, err: err, wName: wName}
+			} else {
+				utils.Log.Info().Msgf("got private key for account %s from wallet %s", aName, wName)
+				aPK = a{name: aName, pk: pk, err: nil, wName: wName}
 			}
-			aPKMap <- a{name: aName, pk: pk, err: nil, wName: wName}
+			aPKMap <- aPK
 		}(acc.Name, acc.WName)
 	}
 	wgA.Wait()
@@ -81,7 +85,7 @@ func process(data *dataIn) error {
 	for a := range aPKMap {
 
 		if a.err != nil {
-			return err
+			return a.err
 		}
 		// Save Private Key To Output Store
 		utils.Log.Info().Msgf("converting and saving private key for account %s to output wallet %s", a.name, a.wName)
