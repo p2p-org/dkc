@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_version: ${{ steps.enver.outputs.release_version }}
+      is_prerelease: ${{ steps.semver.outputs.prerelease != '' }}
     steps:
       - name: Set env
         id: enver
@@ -30,6 +31,12 @@ jobs:
           # Release version is same as release tag without leading 'v'.
           RELEASE_VERSION=$(echo ${GITHUB_REF} | sed -e 's!.*/v!!')
           echo "release_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Parse semver
+        id: semver
+        uses: madhead/semver-utils@latest
+        with:
+          version: ${{ steps.enver.outputs.release_version }}
 
   build:
     name: Build For Different Arch
@@ -67,7 +74,7 @@ jobs:
         id: artifacts-save
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.artifacts_name }}
+          name: ${{ env.artifacts_name }}-${{ matrix.os }}
           path: |
             ./dkc-**.tar.gz
             ./dkc-**.sha256
@@ -81,26 +88,29 @@ jobs:
       - prepare
     env:
       release_version: ${{needs.prepare.outputs.release_version}}
+      is_prerelease: ${{needs.prepare.outputs.is_prerelease}}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Download Ubuntu artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.artifacts_name }}
+          name: ${{ env.artifacts_name }}-ubuntu-latest
+          path: ./artifacts
 
-      - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v1.1.2
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
         with:
-          release_version: ${{ env.release_version }}
+          name: ${{ env.artifacts_name }}-macos-14
+          path: ./artifacts
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          body_path: CHANGELOG.md
           files: |
-            ./dkc-**.tar.gz
-            ./dkc-**.sha256
+            ./artifacts/dkc-**.tar.gz
+            ./artifacts/dkc-**.sha256
           generate_release_notes: true
           fail_on_unmatched_files: true
+          prerelease: ${{ env.is_prerelease }}
