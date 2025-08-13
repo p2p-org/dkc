@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version-file: './go.mod'
 
@@ -30,7 +30,7 @@ jobs:
         run: go test -v ./...
 
       - name: Run golang lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v8
 
   nix-checks:
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v22
+        uses: cachix/install-nix-action@v31
 
       - name: Run nix flake check
         run: nix flake check
