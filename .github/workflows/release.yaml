@@ -67,7 +67,7 @@ jobs:
         id: artifacts-save
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.artifacts_name }}
+          name: ${{ env.artifacts_name }}-${{ matrix.os }}
           path: |
             ./dkc-**.tar.gz
             ./dkc-**.sha256
@@ -85,22 +85,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Download Ubuntu artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.artifacts_name }}
+          name: ${{ env.artifacts_name }}-ubuntu-latest
+          path: ./artifacts
 
-      - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v1.1.2
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
         with:
-          release_version: ${{ env.release_version }}
+          name: ${{ env.artifacts_name }}-macos-14
+          path: ./artifacts
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          body_path: CHANGELOG.md
           files: |
-            ./dkc-**.tar.gz
-            ./dkc-**.sha256
+            ./artifacts/dkc-**.tar.gz
+            ./artifacts/dkc-**.sha256
           generate_release_notes: true
           fail_on_unmatched_files: true
