@@ -10,9 +10,9 @@ import (
 
 func process(data *dataIn) error {
 	//Init Stores
-	iStore := data.InputS
+	iStore := data.InputStore
 
-	oStore := data.OutputS
+	oStore := data.OutputStore
 
 	// Create Output Store
 	utils.Log.Info().Msgf("creating output store %s", oStore.GetPath())
@@ -50,7 +50,7 @@ func process(data *dataIn) error {
 			var aPK a
 			// Get Private Key From Account
 			utils.Log.Info().Msgf("getting private key for account %s from wallet %s", aName, wName)
-			pk, err := iStore.GetPK(wName, aName)
+			pk, err := iStore.GetPrivateKey(wName, aName)
 			if err != nil {
 				utils.Log.Error().Err(err).Msgf("failed to get private key for account %s from wallet %s", aName, wName)
 				aPK = a{name: aName, pk: []byte{}, err: err, wName: wName}
@@ -89,7 +89,7 @@ func process(data *dataIn) error {
 		}
 		// Save Private Key To Output Store
 		utils.Log.Info().Msgf("converting and saving private key for account %s to output wallet %s", a.name, a.wName)
-		err = oStore.SavePKToWallet(a.wName, a.pk, a.name)
+		err = oStore.SavePrivateKey(a.wName, a.name, a.pk)
 		if err != nil {
 			return errors.Wrap(err, "failed to save private key to output wallet")
 		}

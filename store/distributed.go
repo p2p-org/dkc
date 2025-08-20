@@ -52,12 +52,12 @@ func (s *DistributedStore) GetWalletsAccountsMap() ([]AccountsData, []string, er
 	if err != nil {
 		return nil, nil, err
 	}
-	a, w, err := getWalletsAccountsMap(s.Ctx, s.Path+"/"+res.ReplaceAllString(peers[0], ""))
+	account, wallet, err := getWalletsAccountsMap(s.Ctx, s.Path+"/"+res.ReplaceAllString(peers[0], ""))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return a, w, nil
+	return account, wallet, nil
 }
 
 func (s *DistributedStore) CreateWallet(name string) error {
@@ -74,11 +74,11 @@ func (s *DistributedStore) CreateWallet(name string) error {
 	return nil
 }
 
-func (s *DistributedStore) GetPK(w string, a string) ([]byte, error) {
+func (s *DistributedStore) GetPrivateKey(walletName string, accountName string) ([]byte, error) {
 	accounts := map[uint64][]byte{}
 
 	for id := range s.Peers {
-		wallet, err := getWallet(s.PeersPaths[id], w)
+		wallet, err := getWallet(s.PeersPaths[id], walletName)
 		if err != nil {
 			return nil, err
 		}
@@ -87,16 +87,16 @@ func (s *DistributedStore) GetPK(w string, a string) ([]byte, error) {
 			return nil, err
 		}
 
-		defer func() {
-			err = wallet.(types.WalletLocker).Lock(s.Ctx)
-		}()
+		// defer func() {
+		// 	err = wallet.(types.WalletLocker).Lock(s.Ctx)
+		// }()
 
-		account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, a)
+		account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, accountName)
 		if err != nil {
 			return nil, err
 		}
 
-		key, err := getAccountPK(account, s.Ctx, s.PeersPasswords[id])
+		key, err := getAccountPrivateKey(s.Ctx, account, s.PeersPasswords[id])
 		if err != nil {
 			return nil, err
 		}
@@ -111,9 +111,9 @@ func (s *DistributedStore) GetPK(w string, a string) ([]byte, error) {
 	return key, nil
 }
 
-func (s *DistributedStore) SavePKToWallet(w string, a []byte, n string) error {
+func (s *DistributedStore) SavePrivateKey(walletName string, accountName string, privateKey []byte) error {
 	// Spliting PK to shards and get Public and Private Keys for each shard
-	masterSKs, masterPKs, err := bls.Split(s.Ctx, a, uint32(s.Threshold))
+	masterSKs, masterPKs, err := bls.Split(s.Ctx, privateKey, uint32(s.Threshold))
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (s *DistributedStore) SavePKToWallet(w string, a []byte, n string) error {
 	}
 
 	for id := range s.Peers {
-		wallet, err := getWallet(s.PeersPaths[id], w)
+		wallet, err := getWallet(s.PeersPaths[id], walletName)
 		if err != nil {
 			return err
 		}
@@ -134,13 +134,13 @@ func (s *DistributedStore) SavePKToWallet(w string, a []byte, n string) error {
 			return err
 		}
 
-		defer func() {
-			err = wallet.(types.WalletLocker).Lock(s.Ctx)
-		}()
+		// defer func() {
+		// 	err = wallet.(types.WalletLocker).Lock(s.Ctx)
+		// }()
 
 		_, err = wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(
 			s.Ctx,
-			n,
+			accountName,
 			participants[id],
 			uint32(s.Threshold),
 			masterPKs,
@@ -156,86 +156,86 @@ func (s *DistributedStore) SavePKToWallet(w string, a []byte, n string) error {
 	return nil
 }
 
-func newDistributedStore(t string) (DistributedStore, error) {
-	s := DistributedStore{}
+func newDistributedStore(storeType string) (DistributedStore, error) {
+	store := DistributedStore{}
 	//Parse Wallet Type
 
-	wt := viper.GetString(fmt.Sprintf("%s.wallet.type", t))
+	walletType := viper.GetString(fmt.Sprintf("%s.wallet.type", storeType))
 
-	utils.Log.Debug().Msgf("setting store type to %s", wt)
-	s.Type = wt
+	utils.Log.Debug().Msgf("setting store type to %s", walletType)
+	store.Type = walletType
 
 	//Parse Store Path
-	storePath := viper.GetString(fmt.Sprintf("%s.store.path", t))
+	storePath := viper.GetString(fmt.Sprintf("%s.store.path", storeType))
 	utils.Log.Debug().Msgf("setting store path to %s", storePath)
 	if storePath == "" {
-		return s, errors.New("distributed store path is empty")
+		return store, errors.New("distributed store path is empty")
 	}
-	s.Path = storePath
+	store.Path = storePath
 
 	//Parse Peers
 	var peers Peers
 	utils.Log.Debug().Msgf("getting peers")
-	err := viper.UnmarshalKey(fmt.Sprintf("%s.wallet.peers", t), &peers)
+	err := viper.UnmarshalKey(fmt.Sprintf("%s.wallet.peers", storeType), &peers)
 	if err != nil {
-		return s, err
+		return store, err
 	}
 
 	//Peers list must be >= 2
 	utils.Log.Debug().Msgf("checking peers length: %d", len(peers))
 	if len(peers) < 2 {
-		return s, errors.New("number of peers for distributed store is less than 2")
+		return store, errors.New("number of peers for distributed store is less than 2")
 	}
 
 	// Parse Peers Passwords Paths and Names
 	// Regexp To Get Peers Path
 	res, err := regexp.Compile(`:.*`)
 	if err != nil {
-		return s, err
+		return store, err
 	}
-	s.Peers = map[uint64]string{}
-	s.PeersPasswords = map[uint64][][]byte{}
-	s.PeersPaths = map[uint64]string{}
+	store.Peers = map[uint64]string{}
+	store.PeersPasswords = map[uint64][][]byte{}
+	store.PeersPaths = map[uint64]string{}
 	for id, peer := range peers {
 		//Parse Passphrases
 		utils.Log.Debug().Msgf("getting passhphrases for peers %s", peer.Name)
 		passphrases, err := getAccountsPasswords(peer.Passphrases.Path)
 		if err != nil {
-			return s, err
+			return store, err
 		}
 		utils.Log.Debug().Msgf("checking passhphrases len: %d for peers %s", len(passphrases), peer.Name)
 		if len(passphrases) == 0 {
-			return s, errors.New("passhparases file for distributed peer is empty")
+			return store, errors.New("passhparases file for distributed peer is empty")
 		}
 		// Cheking If Passphrases Index Is Set
-		if viper.IsSet(fmt.Sprintf("%s.peers.%d.passphrases.index", t, id)) {
-			passphrases = [][]byte{passphrases[viper.GetInt(fmt.Sprintf("%s.peers.%d.passphrases.index", t, id))]}
+		if viper.IsSet(fmt.Sprintf("%s.peers.%d.passphrases.index", storeType, id)) {
+			passphrases = [][]byte{passphrases[viper.GetInt(fmt.Sprintf("%s.peers.%d.passphrases.index", storeType, id))]}
 		}
-		s.Peers[id] = peer.Name
-		s.PeersPasswords[id] = passphrases
-		s.PeersPaths[id] = s.Path + "/" + res.ReplaceAllString(peer.Name, "")
+		store.Peers[id] = peer.Name
+		store.PeersPasswords[id] = passphrases
+		store.PeersPaths[id] = store.Path + "/" + res.ReplaceAllString(peer.Name, "")
 	}
 
 	//Parse Threshold
 	var threshold Threshold
 	utils.Log.Debug().Msgf("getting threshold value")
-	err = viper.UnmarshalKey(fmt.Sprintf("%s.wallet.threshold", t), &threshold)
+	err = viper.UnmarshalKey(fmt.Sprintf("%s.wallet.threshold", storeType), &threshold)
 	if err != nil {
-		return s, err
+		return store, err
 	}
 
 	//Check number of peers and threshold
 	utils.Log.Debug().Msgf("checking threshold value")
 	if uint32(threshold) <= uint32(len(peers)/2) {
-		return s, errors.New("thershold value for distributed store is less than peers/2")
+		return store, errors.New("thershold value for distributed store is less than peers/2")
 	}
 	if uint32(threshold) > uint32(len(peers)) {
-		return s, errors.New("threshold value for distributed store is more than peer")
+		return store, errors.New("threshold value for distributed store is more than peer")
 	}
 
-	s.Threshold = threshold
+	store.Threshold = threshold
 
-	return s, nil
+	return store, nil
 }
 
 func (s *DistributedStore) GetPath() string {

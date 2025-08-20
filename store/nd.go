@@ -28,12 +28,12 @@ func (s *NDStore) Create() error {
 }
 
 func (s *NDStore) GetWalletsAccountsMap() ([]AccountsData, []string, error) {
-	a, w, err := getWalletsAccountsMap(s.Ctx, s.Path)
+	account, wallet, err := getWalletsAccountsMap(s.Ctx, s.Path)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return a, w, nil
+	return account, wallet, nil
 }
 
 func (s *NDStore) CreateWallet(name string) error {
@@ -48,17 +48,17 @@ func (s *NDStore) CreateWallet(name string) error {
 	return nil
 }
 
-func (s *NDStore) GetPK(w string, a string) ([]byte, error) {
-	wallet, err := getWallet(s.Path, w)
+func (s *NDStore) GetPrivateKey(walletName string, accountName string) ([]byte, error) {
+	wallet, err := getWallet(s.Path, walletName)
 	if err != nil {
 		return nil, err
 	}
-	account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, a)
+	account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, accountName)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := getAccountPK(account, s.Ctx, s.Passphrases)
+	key, err := getAccountPrivateKey(s.Ctx, account, s.Passphrases)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +66,8 @@ func (s *NDStore) GetPK(w string, a string) ([]byte, error) {
 	return key, nil
 }
 
-func (s *NDStore) SavePKToWallet(w string, a []byte, n string) error {
-	wallet, err := getWallet(s.Path, w)
+func (s *NDStore) SavePrivateKey(walletName string, accountName string, privateKey []byte) error {
+	wallet, err := getWallet(s.Path, walletName)
 	if err != nil {
 		return err
 	}
@@ -81,8 +81,8 @@ func (s *NDStore) SavePKToWallet(w string, a []byte, n string) error {
 	}()
 
 	_, err = wallet.(types.WalletAccountImporter).ImportAccount(s.Ctx,
-		n,
-		a,
+		accountName,
+		privateKey,
 		//Always Use The First Password In Array
 		s.Passphrases[0],
 	)
@@ -101,39 +101,39 @@ func (s *NDStore) GetType() string {
 	return s.Type
 }
 
-func newNDStore(t string) (NDStore, error) {
-	s := NDStore{}
+func newNDStore(storeType string) (NDStore, error) {
+	store := NDStore{}
 	//Parse Wallet Type
-	wt := viper.GetString(fmt.Sprintf("%s.wallet.type", t))
-	utils.Log.Debug().Msgf("setting store type to %s", wt)
-	s.Type = wt
+	walletType := viper.GetString(fmt.Sprintf("%s.wallet.type", storeType))
+	utils.Log.Debug().Msgf("setting store type to %s", walletType)
+	store.Type = walletType
 
 	//Parse Store Path
-	storePath := viper.GetString(fmt.Sprintf("%s.store.path", t))
+	storePath := viper.GetString(fmt.Sprintf("%s.store.path", storeType))
 	utils.Log.Debug().Msgf("setting store path to %s", storePath)
 	if storePath == "" {
-		return s, errors.New("nd store path is empty")
+		return store, errors.New("nd store path is empty")
 	}
-	s.Path = storePath
+	store.Path = storePath
 
 	//Parse Passphrases
 	utils.Log.Debug().Msgf("getting passhphrases")
-	passphrases, err := getAccountsPasswords(viper.GetString(fmt.Sprintf("%s.wallet.passphrases.path", t)))
+	passphrases, err := getAccountsPasswords(viper.GetString(fmt.Sprintf("%s.wallet.passphrases.path", storeType)))
 	if err != nil {
-		return s, err
+		return store, err
 	}
 	utils.Log.Debug().Msgf("checking passhphrases len: %d", len(passphrases))
 	if len(passphrases) == 0 {
-		return s, errors.New("passhparases file for nd store is empty")
+		return store, errors.New("passhparases file for nd store is empty")
 	}
 
 	// Cheking If Passphrases Index Is Set
-	if viper.IsSet(fmt.Sprintf("%s.wallet.passphrases.index", t)) {
-		index := viper.GetInt(fmt.Sprintf("%s.wallet.passphrases.index", t))
+	if viper.IsSet(fmt.Sprintf("%s.wallet.passphrases.index", storeType)) {
+		index := viper.GetInt(fmt.Sprintf("%s.wallet.passphrases.index", storeType))
 		passphrases = [][]byte{passphrases[index]}
 	}
 
-	s.Passphrases = passphrases
+	store.Passphrases = passphrases
 
-	return s, nil
+	return store, nil
 }

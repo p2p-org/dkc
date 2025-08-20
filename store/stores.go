@@ -6,89 +6,89 @@ import (
 	"github.com/pkg/errors"
 )
 
-type IStore interface {
+type InputStore interface {
 	// Get Wallets Names And Account Names
 	GetWalletsAccountsMap() ([]AccountsData, []string, error)
 	// Get Private Key From Wallet Using Account Name
-	GetPK(a string, w string) ([]byte, error)
+	GetPrivateKey(walletName string, accountName string) ([]byte, error)
 	// Get Store Type
 	GetType() string
 	// Get Store Path
 	GetPath() string
 }
 
-type OStore interface {
+type OutputStore interface {
 	// Create Store
 	Create() error
 	// Create New Wallet
 	CreateWallet(name string) error
 	// Save Private Key To Wallet
-	SavePKToWallet(w string, a []byte, n string) error
+	SavePrivateKey(walletName string, accountName string, privateKey []byte) error
 	// Get Store Type
 	GetType() string
 	// Get Store Path
 	GetPath() string
 }
 
-func InputStoreInit(ctx context.Context, t string) (IStore, error) {
-	switch t {
+func InputStoreInit(ctx context.Context, storeType string) (InputStore, error) {
+	switch storeType {
 	case "distributed":
-		s, err := newDistributedStore("input")
+		store, err := newDistributedStore("input")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init distributed store as input store")
 		}
-		s.Ctx = ctx
-		return &s, nil
+		store.Ctx = ctx
+		return &store, nil
 	case "hierarchical deterministic":
-		s, err := newHDStore("input")
+		store, err := newHDStore("input")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init hierarchial deterministic store as input store")
 		}
-		s.Ctx = ctx
-		return &s, nil
+		store.Ctx = ctx
+		return &store, nil
 	case "non-deterministic":
-		s, err := newNDStore("input")
+		store, err := newNDStore("input")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init non-deterministic store as input store")
 		}
-		s.Ctx = ctx
-		return &s, nil
+		store.Ctx = ctx
+		return &store, nil
 	case "keystore":
-		s, err := newKeystoreStore("input")
+		store, err := newKeystoreStore("input")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init keystore store as input store")
 		}
-		s.Ctx = ctx
-		return &s, nil
+		store.Ctx = ctx
+		return &store, nil
 	default:
 		return nil, errors.New("incorrect input wallet type")
 	}
 
 }
 
-func OutputStoreInit(ctx context.Context, t string) (OStore, error) {
-	switch t {
+func OutputStoreInit(ctx context.Context, storeType string) (OutputStore, error) {
+	switch storeType {
 	case "distributed":
-		s, err := newDistributedStore("output")
+		store, err := newDistributedStore("output")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init distributed store as output store")
 		}
-		s.Ctx = ctx
-		return &s, nil
+		store.Ctx = ctx
+		return &store, nil
 	case "non-deterministic":
-		s, err := newNDStore("output")
+		store, err := newNDStore("output")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init non-deterministic store as output store")
 		}
-		s.Ctx = ctx
-		return &s, nil
+		store.Ctx = ctx
+		return &store, nil
 	case "keystore":
-		s, err := newKeystoreStore("output")
+		store, err := newKeystoreStore("output")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init keystore store as output store")
 		}
-		s.Ctx = ctx
-		return &s, nil
+		store.Ctx = ctx
+		return &store, nil
 	default:
 		return nil, errors.New("incorrect output wallet type")
 	}

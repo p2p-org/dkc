@@ -98,7 +98,7 @@ func getWalletsAccountsMap(ctx context.Context, location string) ([]AccountsData
 	return accs, wallets, nil
 }
 
-func getAccountPK(account types.Account, ctx context.Context, passphrases [][]byte) ([]byte, error) {
+func getAccountPrivateKey(ctx context.Context, account types.Account, passphrases [][]byte) ([]byte, error) {
 	privateKeyProvider, isPrivateKeyProvider := account.(types.AccountPrivateKeyProvider)
 	if !isPrivateKeyProvider {
 		err := errors.New("failed to get account method")
