@@ -16,6 +16,7 @@ type KeystoreStore struct {
 	Path        string
 	Passphrases [][]byte
 	Ctx         context.Context
+	cache       *WalletCache
 }
 
 func (s *KeystoreStore) Create() error {
@@ -49,20 +50,23 @@ func (s *KeystoreStore) CreateWallet(name string) error {
 }
 
 func (s *KeystoreStore) GetPrivateKey(walletName string, accountName string) ([]byte, error) {
-	wallet, err := getWallet(s.Path, walletName)
+	utils.Log.Info().Msgf("🔐 Keystore Store: Getting private key for account: %s/%s", walletName, accountName)
+
+	// Try to get account from cache first
+	account, err := s.cache.FetchAccount(walletName, accountName)
 	if err != nil {
-		return nil, err
-	}
-	account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, accountName)
-	if err != nil {
-		return nil, err
+		utils.Log.Error().Err(err).Msgf("❌ Keystore Store: Failed to fetch account from cache: %s/%s", walletName, accountName)
+		return nil, errors.Wrap(err, "account not found in cache")
 	}
 
+	utils.Log.Debug().Msgf("🔓 Keystore Store: Extracting private key for account: %s/%s", walletName, accountName)
 	key, err := getAccountPrivateKey(s.Ctx, account, s.Passphrases)
 	if err != nil {
+		utils.Log.Error().Err(err).Msgf("❌ Keystore Store: Failed to get private key for account: %s/%s", walletName, accountName)
 		return nil, err
 	}
 
+	utils.Log.Info().Msgf("✅ Keystore Store: Successfully retrieved private key for account: %s/%s", walletName, accountName)
 	return key, nil
 }
 
@@ -101,8 +105,14 @@ func (s *KeystoreStore) GetType() string {
 	return s.Type
 }
 
+func (s *KeystoreStore) GetWalletCache() *WalletCache {
+	return s.cache
+}
+
 func newKeystoreStore(storeType string) (KeystoreStore, error) {
-	store := KeystoreStore{}
+	store := KeystoreStore{
+		cache: NewWalletCache(),
+	}
 	//Parse Wallet Type
 	walletType := viper.GetString(fmt.Sprintf("%s.wallet.type", storeType))
 	utils.Log.Debug().Msgf("setting store type to %s", walletType)

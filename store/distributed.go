@@ -32,6 +32,7 @@ type DistributedStore struct {
 	PeersPaths     map[uint64]string
 	Threshold      Threshold
 	Ctx            context.Context
+	peerCaches     map[uint64]*WalletCache
 }
 
 func (s *DistributedStore) Create() error {
@@ -75,39 +76,75 @@ func (s *DistributedStore) CreateWallet(name string) error {
 }
 
 func (s *DistributedStore) GetPrivateKey(walletName string, accountName string) ([]byte, error) {
+	utils.Log.Info().Msgf("🔐 Distributed Store: Getting private key for account: %s/%s", walletName, accountName)
+	utils.Log.Info().Msgf("🔗 Distributed Store: Collecting key shards from %d peers", len(s.Peers))
+
 	accounts := map[uint64][]byte{}
 
+	// For distributed store, we need to get keys from each peer using their individual caches
 	for id := range s.Peers {
+		utils.Log.Debug().Msgf("🔍 Distributed Store: Processing peer %d (%s) for account: %s/%s", id, s.Peers[id], walletName, accountName)
+
+		// Try to get account from the specific peer's cache first
+		peerCache := s.peerCaches[id]
+		if peerCache != nil {
+			account, err := peerCache.FetchAccount(walletName, accountName)
+			if err == nil {
+				utils.Log.Debug().Msgf("💾 Distributed Store: Found account in peer %d cache: %s/%s", id, walletName, accountName)
+
+				// Extract private key from cached account
+				utils.Log.Debug().Msgf("🔓 Distributed Store: Extracting key shard from cached account on peer %d: %s/%s", id, walletName, accountName)
+				key, err := getAccountPrivateKey(s.Ctx, account, s.PeersPasswords[id])
+				if err != nil {
+					utils.Log.Error().Err(err).Msgf("❌ Distributed Store: Failed to get private key from cached account on peer %d: %s/%s", id, walletName, accountName)
+					return nil, err
+				}
+
+				accounts[id] = key
+				utils.Log.Debug().Msgf("✅ Distributed Store: Successfully got key shard from peer %d cache for account: %s/%s", id, walletName, accountName)
+				continue
+			} else {
+				utils.Log.Warn().Msgf("⚠️ Distributed Store: Account not found in peer %d cache, falling back to direct access: %s/%s", id, walletName, accountName)
+			}
+		}
+
+		// Fallback to direct wallet access if cache miss
 		wallet, err := getWallet(s.PeersPaths[id], walletName)
 		if err != nil {
+			utils.Log.Error().Err(err).Msgf("❌ Distributed Store: Failed to get wallet from peer %d: %s/%s", id, walletName, accountName)
 			return nil, err
 		}
 		err = wallet.(types.WalletLocker).Unlock(s.Ctx, nil)
 		if err != nil {
+			utils.Log.Error().Err(err).Msgf("❌ Distributed Store: Failed to unlock wallet on peer %d: %s/%s", id, walletName, accountName)
 			return nil, err
 		}
-
-		// defer func() {
-		// 	err = wallet.(types.WalletLocker).Lock(s.Ctx)
-		// }()
 
 		account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, accountName)
 		if err != nil {
+			utils.Log.Error().Err(err).Msgf("❌ Distributed Store: Failed to get account from peer %d: %s/%s", id, walletName, accountName)
 			return nil, err
 		}
 
+		utils.Log.Debug().Msgf("🔓 Distributed Store: Extracting key shard from direct wallet access on peer %d: %s/%s", id, walletName, accountName)
 		key, err := getAccountPrivateKey(s.Ctx, account, s.PeersPasswords[id])
 		if err != nil {
+			utils.Log.Error().Err(err).Msgf("❌ Distributed Store: Failed to get private key from peer %d: %s/%s", id, walletName, accountName)
 			return nil, err
 		}
 
 		accounts[id] = key
-
+		utils.Log.Debug().Msgf("✅ Distributed Store: Successfully got key shard from peer %d direct access for account: %s/%s", id, walletName, accountName)
 	}
+
+	utils.Log.Info().Msgf("🧩 Distributed Store: Combining %d key shards for account: %s/%s", len(accounts), walletName, accountName)
 	key, err := bls.Combine(s.Ctx, accounts)
 	if err != nil {
+		utils.Log.Error().Err(err).Msgf("❌ Distributed Store: Failed to combine key shards for account: %s/%s", walletName, accountName)
 		return nil, err
 	}
+
+	utils.Log.Info().Msgf("✅ Distributed Store: Successfully combined private key for account: %s/%s", walletName, accountName)
 	return key, nil
 }
 
@@ -157,7 +194,9 @@ func (s *DistributedStore) SavePrivateKey(walletName string, accountName string,
 }
 
 func newDistributedStore(storeType string) (DistributedStore, error) {
-	store := DistributedStore{}
+	store := DistributedStore{
+		peerCaches: make(map[uint64]*WalletCache),
+	}
 	//Parse Wallet Type
 
 	walletType := viper.GetString(fmt.Sprintf("%s.wallet.type", storeType))
@@ -214,6 +253,10 @@ func newDistributedStore(storeType string) (DistributedStore, error) {
 		store.Peers[id] = peer.Name
 		store.PeersPasswords[id] = passphrases
 		store.PeersPaths[id] = store.Path + "/" + res.ReplaceAllString(peer.Name, "")
+
+		// Create cache for each peer
+		store.peerCaches[id] = NewWalletCache()
+		utils.Log.Debug().Msgf("created cache for peer %d (%s)", id, peer.Name)
 	}
 
 	//Parse Threshold
@@ -244,4 +287,13 @@ func (s *DistributedStore) GetPath() string {
 
 func (s *DistributedStore) GetType() string {
 	return s.Type
+}
+
+func (s *DistributedStore) GetWalletCache() *WalletCache {
+	// For compatibility, return the first peer's cache
+	// In distributed store, this method is mainly used for GetWalletsAccountsMap compatibility
+	for _, cache := range s.peerCaches {
+		return cache
+	}
+	return nil
 }
