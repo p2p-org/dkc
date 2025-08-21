@@ -1,8 +1,6 @@
 package convert
 
 import (
-	"sync"
-
 	"github.com/p2p-org/dkc/utils"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -23,76 +21,60 @@ func process(data *dataIn) error {
 
 	// Get Accounts Wallets Map
 	utils.Log.Info().Msgf("getting AccountsWallets map for store %s", iStore.GetPath())
-	accountsList, walletsList, err := iStore.GetWalletsAccountsMap()
+	accountsList, walletsList, err := iStore.GetAccounts()
 	if err != nil {
 		return errors.Wrap(err, "failed to get AccountsWallets map")
 	}
 
-	// Converting Wallets
-	utils.Log.Info().Msgf("converting accounts")
-
-	// Init channel struct for account
-	type a struct {
-		name  string
-		pk    []byte
-		err   error
-		wName string
+	// Create Wallets In Output Store First
+	utils.Log.Info().Msgf("creating wallets in output store")
+	for _, w := range walletsList {
+		utils.Log.Info().Msgf("creating wallet %s in %s", w, oStore.GetPath())
+		err := oStore.CreateWallet(w)
+		if err != nil {
+			return errors.Wrap(err, "failed to create wallet")
+		}
 	}
-	// Creating channel for wallets
-	var wgA sync.WaitGroup
-	aPKMap := make(chan a, len(accountsList))
 
-	// Iterates over accounts in separate goroutines
+	// Converting Accounts - Full pipeline per account in parallel
+	utils.Log.Info().Msgf("converting accounts with parallel GetPrivateKey -> SavePrivateKey pipeline")
+
+	// Use errgroup to handle errors from parallel account processing
+	accountGroup := errgroup.Group{}
+
+	// Process each account in parallel: GetPrivateKey -> SavePrivateKey
 	for _, acc := range accountsList {
-		wgA.Add(1)
-		go func(aName string, wName string) {
-			defer wgA.Done()
-			var aPK a
+		// Capture loop variables
+		aName := acc.Name
+		wName := acc.WName
+
+		accountGroup.Go(func() error {
 			// Get Private Key From Account
 			utils.Log.Info().Msgf("getting private key for account %s from wallet %s", aName, wName)
 			pk, err := iStore.GetPrivateKey(wName, aName)
 			if err != nil {
 				utils.Log.Error().Err(err).Msgf("failed to get private key for account %s from wallet %s", aName, wName)
-				aPK = a{name: aName, pk: []byte{}, err: err, wName: wName}
-			} else {
-				utils.Log.Info().Msgf("got private key for account %s from wallet %s", aName, wName)
-				aPK = a{name: aName, pk: pk, err: nil, wName: wName}
+				return errors.Wrap(err, "failed to get private key")
 			}
-			aPKMap <- aPK
-		}(acc.Name, acc.WName)
-	}
-	wgA.Wait()
-	close(aPKMap)
 
-	// Create Wallet In Output Store
-	group := errgroup.Group{}
-	group.Go(func() error {
-		for _, w := range walletsList {
-			utils.Log.Info().Msgf("creating wallet %s in %s", w, oStore.GetPath())
-			err := oStore.CreateWallet(w)
+			utils.Log.Info().Msgf("got private key for account %s from wallet %s", aName, wName)
+
+			// Save Private Key To Output Store
+			utils.Log.Info().Msgf("converting and saving private key for account %s to output wallet %s", aName, wName)
+			err = oStore.SavePrivateKey(wName, aName, pk)
 			if err != nil {
-				return errors.Wrap(err, "failed to create wallet")
+				utils.Log.Error().Err(err).Msgf("failed to save private key for account %s to wallet %s", aName, wName)
+				return errors.Wrap(err, "failed to save private key to output wallet")
 			}
-		}
-		return nil
-	})
-	// Return only first error
-	if err := group.Wait(); err != nil {
-		return err
+
+			utils.Log.Info().Msgf("✅ successfully converted account %s in wallet %s", aName, wName)
+			return nil
+		})
 	}
 
-	//We can get private keys in different goroutines, but we need to save save them one by one
-	for a := range aPKMap {
-
-		if a.err != nil {
-			return a.err
-		}
-		// Save Private Key To Output Store
-		utils.Log.Info().Msgf("converting and saving private key for account %s to output wallet %s", a.name, a.wName)
-		err = oStore.SavePrivateKey(a.wName, a.name, a.pk)
-		if err != nil {
-			return errors.Wrap(err, "failed to save private key to output wallet")
-		}
+	// Wait for all account conversions to complete
+	if err := accountGroup.Wait(); err != nil {
+		return err
 	}
 
 	return nil

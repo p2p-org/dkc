@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	e2wallet "github.com/wealdtech/go-eth2-wallet"
-	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
 type HDStore struct {
@@ -19,6 +18,9 @@ type HDStore struct {
 	cache       *WalletCache
 }
 
+// Ensure HDStore implements AtomicStore interface
+var _ AtomicStore = (*HDStore)(nil)
+
 func (s *HDStore) Create() error {
 	_, err := createStore(s.Path)
 	if err != nil {
@@ -27,25 +29,26 @@ func (s *HDStore) Create() error {
 
 	return nil
 }
-func (s *HDStore) GetWalletsAccountsMap() ([]AccountsData, []string, error) {
+
+// GetAccounts implements AtomicStore interface
+func (s *HDStore) GetAccounts() ([]AccountsData, []string, error) {
 	account, wallet, err := getWalletsAccountsMap(s.Ctx, s.Path)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return account, wallet, nil
 }
 
-func (s *HDStore) CreateWallet(name string) (types.Wallet, error) {
+func (s *HDStore) CreateWallet(name string) error {
 	store, err := getStore(s.Path)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	wallet, err := e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
+	_, err = e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return wallet, nil
+	return nil
 }
 
 func (s *HDStore) GetPrivateKey(walletName string, accountName string) ([]byte, error) {
@@ -69,6 +72,11 @@ func (s *HDStore) GetPrivateKey(walletName string, accountName string) ([]byte, 
 	return key, nil
 }
 
+// SavePrivateKey implements AtomicStore interface - HD stores don't typically support saving keys
+func (s *HDStore) SavePrivateKey(walletName string, accountName string, data interface{}) error {
+	return errors.New("HD stores do not support saving private keys - keys are derived from mnemonic")
+}
+
 func (s *HDStore) GetPath() string {
 	return s.Path
 }
@@ -77,8 +85,19 @@ func (s *HDStore) GetType() string {
 	return s.Type
 }
 
-func (s *HDStore) GetWalletCache() *WalletCache {
+// GetCache implements AtomicStore interface
+func (s *HDStore) GetCache() *WalletCache {
 	return s.cache
+}
+
+// GetContext implements AtomicStore interface
+func (s *HDStore) GetContext() context.Context {
+	return s.Ctx
+}
+
+// SetContext implements AtomicStore interface
+func (s *HDStore) SetContext(ctx context.Context) {
+	s.Ctx = ctx
 }
 
 func newHDStore(storeType string) (HDStore, error) {

@@ -11,8 +11,8 @@ import (
 
 type dataIn struct {
 	Ctx         context.Context
-	InputStore  store.InputStore
-	OutputStore store.OutputStore
+	InputStore  *store.ComposedStore
+	OutputStore *store.ComposedStore
 }
 
 func (d *dataIn) validate() error {
@@ -38,14 +38,14 @@ func input(ctx context.Context) (*dataIn, error) {
 	data.Ctx = ctx
 	//Parse Input Config
 	utils.Log.Debug().Msgf("init %s as input store", viper.GetString("input.wallet.type"))
-	data.InputStore, err = store.InputStoreInit(ctx, viper.GetString("input.wallet.type"))
+	data.InputStore, err = store.InputStoreComposed(ctx, viper.GetString("input.wallet.type"))
 	if err != nil {
 		return nil, err
 	}
 
 	//Parse Output Config
 	utils.Log.Debug().Msgf("init %s as output store", viper.GetString("output.wallet.type"))
-	data.OutputStore, err = store.OutputStoreInit(ctx, viper.GetString("output.wallet.type"))
+	data.OutputStore, err = store.OutputStoreComposed(ctx, viper.GetString("output.wallet.type"))
 	if err != nil {
 		return nil, err
 	}

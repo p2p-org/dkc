@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"runtime"
 	"sync"
 
 	"github.com/p2p-org/dkc/utils"
@@ -18,6 +19,16 @@ type WalletCache struct {
 	walletAccounts map[string]map[string]types.Account
 	pubKeyPaths    map[[48]byte]string
 	initialized    bool
+}
+
+// accountResult holds the result of processing an account
+type accountResult struct {
+	account       types.Account
+	accountName   string
+	unlocked      bool
+	pubKeyIndexed bool
+	pubKey        [48]byte
+	err           error
 }
 
 // NewWalletCache creates a new wallet cache
@@ -87,57 +98,81 @@ func (wc *WalletCache) PopulateFromLocationWithPrefix(ctx context.Context, locat
 		walletCount++
 
 		walletAccountCount := 0
-		// Process accounts in this wallet
+
+		// Collect all accounts from this wallet first
+		var accounts []types.Account
 		for account := range wallet.Accounts(ctx) {
-			accountName := account.Name()
+			accounts = append(accounts, account)
+		}
+
+		// Skip worker pool if no accounts
+		if len(accounts) == 0 {
 			if logPrefix != "" {
-				utils.Log.Debug().Msgf("👤 processing account: %s/%s [%s]", walletName, accountName, logPrefix)
+				utils.Log.Info().Msgf("📭 wallet %s has no accounts [%s]", walletName, logPrefix)
 			} else {
-				utils.Log.Debug().Msgf("👤 processing account: %s/%s", walletName, accountName)
+				utils.Log.Info().Msgf("📭 wallet %s has no accounts", walletName)
 			}
+			continue
+		}
 
-			// Unlock account with provided passphrases
-			if locker, isLocker := account.(types.AccountLocker); isLocker {
-				unlocked, err := locker.IsUnlocked(ctx)
-				if err == nil && !unlocked {
-					for i, passphrase := range passphrases {
-						if err := locker.Unlock(ctx, passphrase); err == nil {
-							if logPrefix != "" {
-								utils.Log.Debug().Msgf("🔓 unlocked account %s/%s with passphrase #%d [%s]", walletName, accountName, i, logPrefix)
-							} else {
-								utils.Log.Debug().Msgf("🔓 unlocked account %s/%s with passphrase #%d", walletName, accountName, i)
-							}
-							unlockedCount++
-							break
-						}
-					}
-				} else if err == nil && unlocked {
-					if logPrefix != "" {
-						utils.Log.Debug().Msgf("✅ account %s/%s already unlocked [%s]", walletName, accountName, logPrefix)
-					} else {
-						utils.Log.Debug().Msgf("✅ account %s/%s already unlocked", walletName, accountName)
-					}
-					unlockedCount++
+		// Process accounts using worker pool for parallel unlock
+		numWorkers := runtime.NumCPU() * 3
+		if numWorkers > len(accounts) {
+			numWorkers = len(accounts)
+		}
+
+		if logPrefix != "" {
+			utils.Log.Info().Msgf("🔧 processing %d accounts with %d workers for wallet: %s [%s]", len(accounts), numWorkers, walletName, logPrefix)
+		} else {
+			utils.Log.Info().Msgf("🔧 processing %d accounts with %d workers for wallet: %s", len(accounts), numWorkers, walletName)
+		}
+
+		// Create channels for worker pool
+		accountChan := make(chan types.Account, len(accounts))
+		resultChan := make(chan accountResult, len(accounts))
+
+		// Start workers
+		var workersWg sync.WaitGroup
+		for i := 0; i < numWorkers; i++ {
+			workersWg.Add(1)
+			go func(workerID int) {
+				defer workersWg.Done()
+				for account := range accountChan {
+					result := processAccount(ctx, account, walletName, passphrases, logPrefix, workerID)
+					resultChan <- result
 				}
+			}(i)
+		}
+
+		// Send accounts to workers
+		for _, account := range accounts {
+			accountChan <- account
+		}
+		close(accountChan)
+
+		// Wait for all workers to finish
+		workersWg.Wait()
+		close(resultChan)
+
+		// Collect results from workers
+		for result := range resultChan {
+			if result.err != nil {
+				utils.Log.Warn().Err(result.err).Msgf("⚠️ warning processing account: %s/%s", walletName, result.accountName)
 			}
 
-			wc.walletAccounts[walletName][accountName] = account
+			// Store account in cache
+			wc.walletAccounts[walletName][result.accountName] = result.account
 			accountCount++
 			walletAccountCount++
 
-			// Store public key mapping if available
-			if pubKeyProvider, ok := account.(types.AccountPublicKeyProvider); ok {
-				if pubKey := pubKeyProvider.PublicKey(); pubKey != nil {
-					var pubKeyBytes [48]byte
-					copy(pubKeyBytes[:], pubKey.Marshal())
-					wc.pubKeyPaths[pubKeyBytes] = walletName + "/" + accountName
-					pubKeyCount++
-					if logPrefix != "" {
-						utils.Log.Debug().Msgf("🔑 indexed public key for account: %s/%s [%s]", walletName, accountName, logPrefix)
-					} else {
-						utils.Log.Debug().Msgf("🔑 indexed public key for account: %s/%s", walletName, accountName)
-					}
-				}
+			// Update counters
+			if result.unlocked {
+				unlockedCount++
+			}
+			if result.pubKeyIndexed {
+				pubKeyCount++
+				// Store public key mapping
+				wc.pubKeyPaths[result.pubKey] = walletName + "/" + result.accountName
 			}
 		}
 		if logPrefix != "" {
@@ -265,4 +300,61 @@ func (wc *WalletCache) IsInitialized() bool {
 	wc.mu.RLock()
 	defer wc.mu.RUnlock()
 	return wc.initialized
+}
+
+// processAccount handles unlocking and processing a single account in a worker
+func processAccount(ctx context.Context, account types.Account, walletName string, passphrases [][]byte, logPrefix string, workerID int) accountResult {
+	accountName := account.Name()
+	result := accountResult{
+		account:       account,
+		accountName:   accountName,
+		unlocked:      false,
+		pubKeyIndexed: false,
+	}
+
+	if logPrefix != "" {
+		utils.Log.Debug().Msgf("👤 worker %d processing account: %s/%s [%s]", workerID, walletName, accountName, logPrefix)
+	} else {
+		utils.Log.Debug().Msgf("👤 worker %d processing account: %s/%s", workerID, walletName, accountName)
+	}
+
+	// Unlock account with provided passphrases
+	if locker, isLocker := account.(types.AccountLocker); isLocker {
+		unlocked, err := locker.IsUnlocked(ctx)
+		if err == nil && !unlocked {
+			for i, passphrase := range passphrases {
+				if err := locker.Unlock(ctx, passphrase); err == nil {
+					if logPrefix != "" {
+						utils.Log.Debug().Msgf("🔓 worker %d unlocked account %s/%s with passphrase #%d [%s]", workerID, walletName, accountName, i, logPrefix)
+					} else {
+						utils.Log.Debug().Msgf("🔓 worker %d unlocked account %s/%s with passphrase #%d", workerID, walletName, accountName, i)
+					}
+					result.unlocked = true
+					break
+				}
+			}
+		} else if err == nil && unlocked {
+			if logPrefix != "" {
+				utils.Log.Debug().Msgf("✅ worker %d account %s/%s already unlocked [%s]", workerID, walletName, accountName, logPrefix)
+			} else {
+				utils.Log.Debug().Msgf("✅ worker %d account %s/%s already unlocked", workerID, walletName, accountName)
+			}
+			result.unlocked = true
+		}
+	}
+
+	// Store public key mapping if available
+	if pubKeyProvider, ok := account.(types.AccountPublicKeyProvider); ok {
+		if pubKey := pubKeyProvider.PublicKey(); pubKey != nil {
+			copy(result.pubKey[:], pubKey.Marshal())
+			result.pubKeyIndexed = true
+			if logPrefix != "" {
+				utils.Log.Debug().Msgf("🔑 worker %d indexed public key for account: %s/%s [%s]", workerID, walletName, accountName, logPrefix)
+			} else {
+				utils.Log.Debug().Msgf("🔑 worker %d indexed public key for account: %s/%s", workerID, walletName, accountName)
+			}
+		}
+	}
+
+	return result
 }

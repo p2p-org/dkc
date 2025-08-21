@@ -19,6 +19,9 @@ type NDStore struct {
 	cache       *WalletCache
 }
 
+// Ensure NDStore implements AtomicStore interface
+var _ AtomicStore = (*NDStore)(nil)
+
 func (s *NDStore) Create() error {
 	_, err := createStore(s.Path)
 	if err != nil {
@@ -28,12 +31,12 @@ func (s *NDStore) Create() error {
 	return nil
 }
 
-func (s *NDStore) GetWalletsAccountsMap() ([]AccountsData, []string, error) {
+// GetAccounts implements AtomicStore interface
+func (s *NDStore) GetAccounts() ([]AccountsData, []string, error) {
 	account, wallet, err := getWalletsAccountsMap(s.Ctx, s.Path)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return account, wallet, nil
 }
 
@@ -42,10 +45,20 @@ func (s *NDStore) CreateWallet(name string) error {
 	if err != nil {
 		return err
 	}
-	_, err = e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
+	wallet, err := e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
 	if err != nil {
 		return err
 	}
+
+	// Unlock wallet immediately after creation and keep it unlocked
+	err = wallet.(types.WalletLocker).Unlock(context.Background(), nil)
+	if err != nil {
+		utils.Log.Warn().Err(err).Msgf("⚠️ ND Store: Failed to unlock wallet after creation: %s", name)
+		// Don't return error, wallet might not require unlocking
+	} else {
+		utils.Log.Info().Msgf("🔓 ND Store: Wallet %s created and unlocked permanently", name)
+	}
+
 	return nil
 }
 
@@ -70,19 +83,27 @@ func (s *NDStore) GetPrivateKey(walletName string, accountName string) ([]byte, 
 	return key, nil
 }
 
-func (s *NDStore) SavePrivateKey(walletName string, accountName string, privateKey []byte) error {
+func (s *NDStore) SavePrivateKey(walletName string, accountName string, data interface{}) error {
+	// Extract private key from interface
+	privateKey, ok := data.([]byte)
+	if !ok {
+		return errors.New("invalid data type for ND store - expected []byte")
+	}
+
+	// Prevent concurrent file corruption with wallet-level mutex
+	walletPath := s.Path + "/" + walletName
+	fileMu := getFileMutex(walletPath)
+	fileMu.Lock()
+	defer fileMu.Unlock()
+
+	utils.Log.Debug().Msgf("💾 ND Store: Importing account (wallet already unlocked): %s/%s", walletName, accountName)
+
 	wallet, err := getWallet(s.Path, walletName)
 	if err != nil {
 		return err
 	}
-	err = wallet.(types.WalletLocker).Unlock(context.Background(), nil)
-	if err != nil {
-		return err
-	}
 
-	defer func() {
-		err = wallet.(types.WalletLocker).Lock(context.Background())
-	}()
+	// No need to unlock - wallet is already unlocked permanently after creation
 
 	_, err = wallet.(types.WalletAccountImporter).ImportAccount(s.Ctx,
 		accountName,
@@ -105,8 +126,19 @@ func (s *NDStore) GetType() string {
 	return s.Type
 }
 
-func (s *NDStore) GetWalletCache() *WalletCache {
+// GetCache implements AtomicStore interface
+func (s *NDStore) GetCache() *WalletCache {
 	return s.cache
+}
+
+// GetContext implements AtomicStore interface
+func (s *NDStore) GetContext() context.Context {
+	return s.Ctx
+}
+
+// SetContext implements AtomicStore interface
+func (s *NDStore) SetContext(ctx context.Context) {
+	s.Ctx = ctx
 }
 
 func newNDStore(storeType string) (NDStore, error) {
