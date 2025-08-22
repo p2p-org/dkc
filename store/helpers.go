@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"sync"
 
+	"github.com/p2p-org/dkc/utils"
 	"github.com/pkg/errors"
 	e2wallet "github.com/wealdtech/go-eth2-wallet"
 	filesystem "github.com/wealdtech/go-eth2-wallet-store-filesystem"
@@ -16,20 +18,33 @@ type AccountsData struct {
 	WName string
 }
 
-func lockAccount(ctx context.Context, acc types.Account) error {
-	if locker, isLocker := acc.(types.AccountLocker); isLocker {
-		unlocked, err := locker.IsUnlocked(ctx)
-		if err != nil {
-			return err
-		}
-		if unlocked {
-			err := locker.Lock(ctx)
-			if err != nil {
-				return err
-			}
-		}
+// Global file mutex map to prevent concurrent wallet file corruption
+var (
+	fileMutexes   = make(map[string]*sync.Mutex)
+	fileMutexesMu sync.RWMutex
+)
+
+// getFileMutex returns a mutex for a specific wallet path to prevent file corruption
+func getFileMutex(walletPath string) *sync.Mutex {
+	fileMutexesMu.RLock()
+	mu, exists := fileMutexes[walletPath]
+	fileMutexesMu.RUnlock()
+
+	if exists {
+		return mu
 	}
-	return nil
+
+	fileMutexesMu.Lock()
+	defer fileMutexesMu.Unlock()
+
+	// Double-check in case another goroutine created it
+	if mu, exists := fileMutexes[walletPath]; exists {
+		return mu
+	}
+
+	mu = &sync.Mutex{}
+	fileMutexes[walletPath] = mu
+	return mu
 }
 
 func unlockAccount(ctx context.Context, acc types.Account, passphrases [][]byte) (types.Account, error) {
@@ -98,7 +113,7 @@ func getWalletsAccountsMap(ctx context.Context, location string) ([]AccountsData
 	return accs, wallets, nil
 }
 
-func getAccountPK(account types.Account, ctx context.Context, passphrases [][]byte) ([]byte, error) {
+func getAccountPrivateKey(ctx context.Context, account types.Account, passphrases [][]byte) ([]byte, error) {
 	privateKeyProvider, isPrivateKeyProvider := account.(types.AccountPrivateKeyProvider)
 	if !isPrivateKeyProvider {
 		err := errors.New("failed to get account method")
@@ -115,10 +130,8 @@ func getAccountPK(account types.Account, ctx context.Context, passphrases [][]by
 		return nil, err
 	}
 
-	// Lock Account
-	defer func() {
-		err = lockAccount(ctx, account)
-	}()
+	// REMOVED: defer lockAccount - keep accounts unlocked for wallet operations
+	// This was causing "wallet must be unlocked to import accounts" errors
 
 	return key.Marshal(), nil
 }
@@ -131,6 +144,22 @@ func getWallet(location string, n string) (types.Wallet, error) {
 	w, err := e2wallet.OpenWallet(n)
 	if err != nil {
 		return nil, err
+	}
+
+	// Always unlock wallet after opening (follow "unlock once, never lock" strategy)
+	if locker, isLocker := w.(types.WalletLocker); isLocker {
+		// Check if already unlocked first
+		unlocked, err := locker.IsUnlocked(context.Background())
+		if err == nil && !unlocked {
+			// Unlock with nil passphrase (works for ND wallets)
+			err = locker.Unlock(context.Background(), nil)
+			if err != nil {
+				utils.Log.Warn().Err(err).Msgf("⚠️ Failed to unlock wallet after opening: %s", n)
+				// Don't return error - some wallets might not need unlocking
+			} else {
+				utils.Log.Debug().Msgf("🔓 Wallet %s unlocked after opening from disk", n)
+			}
+		}
 	}
 
 	return w, nil

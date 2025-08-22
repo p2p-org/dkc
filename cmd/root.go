@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strings"
 
@@ -21,6 +23,10 @@ var rootCmd = &cobra.Command{
 	Short: "Dirk Key Converter",
 	Long:  `Allow to split and combine keystores and distributed wallets for Dirk`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		go func() {
+			utils.Log.Info().Msg("Starting pprof server on :6060")
+			utils.Log.Error().Err(http.ListenAndServe("localhost:6060", nil)).Send()
+		}()
 	},
 }
 

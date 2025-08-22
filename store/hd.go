@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	e2wallet "github.com/wealdtech/go-eth2-wallet"
-	types "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
 type HDStore struct {
@@ -16,7 +15,11 @@ type HDStore struct {
 	Path        string
 	Passphrases [][]byte
 	Ctx         context.Context
+	cache       *WalletCache
 }
+
+// Ensure HDStore implements AtomicStore interface
+var _ AtomicStore = (*HDStore)(nil)
 
 func (s *HDStore) Create() error {
 	_, err := createStore(s.Path)
@@ -26,43 +29,52 @@ func (s *HDStore) Create() error {
 
 	return nil
 }
-func (s *HDStore) GetWalletsAccountsMap() ([]AccountsData, []string, error) {
-	a, w, err := getWalletsAccountsMap(s.Ctx, s.Path)
+
+// GetAccounts implements AtomicStore interface
+func (s *HDStore) GetAccounts() ([]AccountsData, []string, error) {
+	account, wallet, err := getWalletsAccountsMap(s.Ctx, s.Path)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return a, w, nil
+	return account, wallet, nil
 }
 
-func (s *HDStore) CreateWallet(name string) (types.Wallet, error) {
+func (s *HDStore) CreateWallet(name string) error {
 	store, err := getStore(s.Path)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	wallet, err := e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
+	_, err = e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return wallet, nil
+	return nil
 }
 
-func (s *HDStore) GetPK(w string, a string) ([]byte, error) {
-	wallet, err := getWallet(s.Path, w)
+func (s *HDStore) GetPrivateKey(walletName string, accountName string) ([]byte, error) {
+	utils.Log.Info().Msgf("🔐 HD Store: Getting private key for account: %s/%s", walletName, accountName)
+
+	// Try to get account from cache first
+	account, err := s.cache.FetchAccount(walletName, accountName)
 	if err != nil {
-		return nil, err
+		utils.Log.Error().Err(err).Msgf("❌ HD Store: Failed to fetch account from cache: %s/%s", walletName, accountName)
+		return nil, errors.Wrap(err, "account not found in cache")
 	}
-	account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, a)
+
+	utils.Log.Debug().Msgf("🔓 HD Store: Extracting private key for account: %s/%s", walletName, accountName)
+	key, err := getAccountPrivateKey(s.Ctx, account, s.Passphrases)
 	if err != nil {
+		utils.Log.Error().Err(err).Msgf("❌ HD Store: Failed to get private key for account: %s/%s", walletName, accountName)
 		return nil, err
 	}
 
-	key, err := getAccountPK(account, s.Ctx, s.Passphrases)
-	if err != nil {
-		return nil, err
-	}
-
+	utils.Log.Info().Msgf("✅ HD Store: Successfully retrieved private key for account: %s/%s", walletName, accountName)
 	return key, nil
+}
+
+// SavePrivateKey implements AtomicStore interface - HD stores don't typically support saving keys
+func (s *HDStore) SavePrivateKey(walletName string, accountName string, data interface{}) error {
+	return errors.New("HD stores do not support saving private keys - keys are derived from mnemonic")
 }
 
 func (s *HDStore) GetPath() string {
@@ -73,41 +85,58 @@ func (s *HDStore) GetType() string {
 	return s.Type
 }
 
-func newHDStore(t string) (HDStore, error) {
-	s := HDStore{}
+// GetCache implements AtomicStore interface
+func (s *HDStore) GetCache() *WalletCache {
+	return s.cache
+}
+
+// GetContext implements AtomicStore interface
+func (s *HDStore) GetContext() context.Context {
+	return s.Ctx
+}
+
+// SetContext implements AtomicStore interface
+func (s *HDStore) SetContext(ctx context.Context) {
+	s.Ctx = ctx
+}
+
+func newHDStore(storeType string) (HDStore, error) {
+	store := HDStore{
+		cache: NewWalletCache(),
+	}
 	//Parse Wallet Type
-	wt := viper.GetString(fmt.Sprintf("%s.wallet.type", t))
-	utils.Log.Debug().Msgf("setting store type to %s", wt)
-	s.Type = wt
+	walletType := viper.GetString(fmt.Sprintf("%s.wallet.type", storeType))
+	utils.Log.Debug().Msgf("setting store type to %s", walletType)
+	store.Type = walletType
 
 	//Parse Store Path
-	storePath := viper.GetString(fmt.Sprintf("%s.store.path", t))
+	storePath := viper.GetString(fmt.Sprintf("%s.store.path", storeType))
 	utils.Log.Debug().Msgf("setting store path to %s", storePath)
 	if storePath == "" {
-		return s, errors.New("hd store path is empty")
+		return store, errors.New("hd store path is empty")
 	}
-	s.Path = storePath
+	store.Path = storePath
 
 	//Parse Passphrases
 	utils.Log.Debug().Msgf("getting passhphrases")
 	passphrases, err := getAccountsPasswords(
-		viper.GetString(fmt.Sprintf("%s.wallet.passphrases.path", t)),
+		viper.GetString(fmt.Sprintf("%s.wallet.passphrases.path", storeType)),
 	)
 	if err != nil {
-		return s, err
+		return store, err
 	}
 	utils.Log.Debug().Msgf("checking passhphrases len: %d", len(passphrases))
 	if len(passphrases) == 0 {
-		return s, errors.New("passhparases file for hd store is empty")
+		return store, errors.New("passhparases file for hd store is empty")
 	}
 
 	// Cheking If Passphrases Index Is Set
-	if viper.IsSet(fmt.Sprintf("%s.wallet.passphrases.index", t)) {
-		index := viper.GetInt(fmt.Sprintf("%s.wallet.passphrases.index", t))
+	if viper.IsSet(fmt.Sprintf("%s.wallet.passphrases.index", storeType)) {
+		index := viper.GetInt(fmt.Sprintf("%s.wallet.passphrases.index", storeType))
 		passphrases = [][]byte{passphrases[index]}
 	}
 
-	s.Passphrases = passphrases
+	store.Passphrases = passphrases
 
-	return s, nil
+	return store, nil
 }

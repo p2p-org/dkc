@@ -16,7 +16,11 @@ type KeystoreStore struct {
 	Path        string
 	Passphrases [][]byte
 	Ctx         context.Context
+	cache       *WalletCache
 }
+
+// Ensure KeystoreStore implements AtomicStore interface
+var _ AtomicStore = (*KeystoreStore)(nil)
 
 func (s *KeystoreStore) Create() error {
 	_, err := createStore(s.Path)
@@ -27,13 +31,13 @@ func (s *KeystoreStore) Create() error {
 	return nil
 }
 
-func (s *KeystoreStore) GetWalletsAccountsMap() ([]AccountsData, []string, error) {
-	a, w, err := getWalletsAccountsMap(s.Ctx, s.Path)
+// GetAccounts implements AtomicStore interface
+func (s *KeystoreStore) GetAccounts() ([]AccountsData, []string, error) {
+	account, wallet, err := getWalletsAccountsMap(s.Ctx, s.Path)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return a, w, nil
+	return account, wallet, nil
 }
 
 func (s *KeystoreStore) CreateWallet(name string) error {
@@ -41,48 +45,69 @@ func (s *KeystoreStore) CreateWallet(name string) error {
 	if err != nil {
 		return err
 	}
-	_, err = e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
+	wallet, err := e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
 	if err != nil {
 		return err
 	}
+
+	// Unlock wallet immediately after creation and keep it unlocked
+	err = wallet.(types.WalletLocker).Unlock(context.Background(), nil)
+	if err != nil {
+		utils.Log.Warn().Err(err).Msgf("⚠️ Keystore Store: Failed to unlock wallet after creation: %s", name)
+		// Don't return error, wallet might not require unlocking
+	} else {
+		utils.Log.Info().Msgf("🔓 Keystore Store: Wallet %s created and unlocked permanently", name)
+	}
+
 	return nil
 }
 
-func (s *KeystoreStore) GetPK(w string, a string) ([]byte, error) {
-	wallet, err := getWallet(s.Path, w)
+func (s *KeystoreStore) GetPrivateKey(walletName string, accountName string) ([]byte, error) {
+	utils.Log.Info().Msgf("🔐 Keystore Store: Getting private key for account: %s/%s", walletName, accountName)
+
+	// Try to get account from cache first
+	account, err := s.cache.FetchAccount(walletName, accountName)
 	if err != nil {
-		return nil, err
+		utils.Log.Error().Err(err).Msgf("❌ Keystore Store: Failed to fetch account from cache: %s/%s", walletName, accountName)
+		return nil, errors.Wrap(err, "account not found in cache")
 	}
-	account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, a)
+
+	utils.Log.Debug().Msgf("🔓 Keystore Store: Extracting private key for account: %s/%s", walletName, accountName)
+	key, err := getAccountPrivateKey(s.Ctx, account, s.Passphrases)
 	if err != nil {
+		utils.Log.Error().Err(err).Msgf("❌ Keystore Store: Failed to get private key for account: %s/%s", walletName, accountName)
 		return nil, err
 	}
 
-	key, err := getAccountPK(account, s.Ctx, s.Passphrases)
-	if err != nil {
-		return nil, err
-	}
-
+	utils.Log.Info().Msgf("✅ Keystore Store: Successfully retrieved private key for account: %s/%s", walletName, accountName)
 	return key, nil
 }
 
-func (s *KeystoreStore) SavePKToWallet(w string, a []byte, n string) error {
-	wallet, err := getWallet(s.Path, w)
-	if err != nil {
-		return err
+func (s *KeystoreStore) SavePrivateKey(walletName string, accountName string, data interface{}) error {
+	// Extract private key from interface
+	privateKey, ok := data.([]byte)
+	if !ok {
+		return errors.New("invalid data type for Keystore store - expected []byte")
 	}
-	err = wallet.(types.WalletLocker).Unlock(context.Background(), nil)
+
+	// Prevent concurrent file corruption with wallet-level mutex
+	walletPath := s.Path + "/" + walletName
+	fileMu := getFileMutex(walletPath)
+	fileMu.Lock()
+	defer fileMu.Unlock()
+
+	utils.Log.Debug().Msgf("💾 Keystore Store: Importing account (wallet already unlocked): %s/%s", walletName, accountName)
+
+	wallet, err := getWallet(s.Path, walletName)
 	if err != nil {
 		return err
 	}
 
-	defer func() {
-		err = wallet.(types.WalletLocker).Lock(context.Background())
-	}()
+	// No need to unlock - wallet is already unlocked permanently after creation
 
 	_, err = wallet.(types.WalletAccountImporter).ImportAccount(s.Ctx,
-		n,
-		a,
+		accountName,
+		privateKey,
 		//Always Use The First Password In Array
 		s.Passphrases[0],
 	)
@@ -101,39 +126,56 @@ func (s *KeystoreStore) GetType() string {
 	return s.Type
 }
 
-func newKeystoreStore(t string) (KeystoreStore, error) {
-	s := KeystoreStore{}
+// GetCache implements AtomicStore interface
+func (s *KeystoreStore) GetCache() *WalletCache {
+	return s.cache
+}
+
+// GetContext implements AtomicStore interface
+func (s *KeystoreStore) GetContext() context.Context {
+	return s.Ctx
+}
+
+// SetContext implements AtomicStore interface
+func (s *KeystoreStore) SetContext(ctx context.Context) {
+	s.Ctx = ctx
+}
+
+func newKeystoreStore(storeType string) (KeystoreStore, error) {
+	store := KeystoreStore{
+		cache: NewWalletCache(),
+	}
 	//Parse Wallet Type
-	wt := viper.GetString(fmt.Sprintf("%s.wallet.type", t))
-	utils.Log.Debug().Msgf("setting store type to %s", wt)
-	s.Type = wt
+	walletType := viper.GetString(fmt.Sprintf("%s.wallet.type", storeType))
+	utils.Log.Debug().Msgf("setting store type to %s", walletType)
+	store.Type = walletType
 
 	//Parse Store Path
-	storePath := viper.GetString(fmt.Sprintf("%s.store.path", t))
+	storePath := viper.GetString(fmt.Sprintf("%s.store.path", storeType))
 	utils.Log.Debug().Msgf("setting store path to %s", storePath)
 	if storePath == "" {
-		return s, errors.New("keystore store path is empty")
+		return store, errors.New("keystore store path is empty")
 	}
-	s.Path = storePath
+	store.Path = storePath
 
 	//Parse Passphrases
 	utils.Log.Debug().Msgf("getting passhphrases")
-	passphrases, err := getAccountsPasswords(viper.GetString(fmt.Sprintf("%s.wallet.passphrases.path", t)))
+	passphrases, err := getAccountsPasswords(viper.GetString(fmt.Sprintf("%s.wallet.passphrases.path", storeType)))
 	if err != nil {
-		return s, err
+		return store, err
 	}
 	utils.Log.Debug().Msgf("checking passhphrases len: %d", len(passphrases))
 	if len(passphrases) == 0 {
-		return s, errors.New("passhparases file for keystore store is empty")
+		return store, errors.New("passhparases file for keystore store is empty")
 	}
 
 	// Cheking If Passphrases Index Is Set
-	if viper.IsSet(fmt.Sprintf("%s.wallet.passphrases.index", t)) {
-		index := viper.GetInt(fmt.Sprintf("%s.wallet.passphrases.index", t))
+	if viper.IsSet(fmt.Sprintf("%s.wallet.passphrases.index", storeType)) {
+		index := viper.GetInt(fmt.Sprintf("%s.wallet.passphrases.index", storeType))
 		passphrases = [][]byte{passphrases[index]}
 	}
 
-	s.Passphrases = passphrases
+	store.Passphrases = passphrases
 
-	return s, nil
+	return store, nil
 }
