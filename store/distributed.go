@@ -62,6 +62,9 @@ func (s *DistributedAtomicStore) CreateWallet(name string) error {
 		utils.Log.Info().Msgf("🔓 Distributed Atomic Store [Peer %d]: Wallet %s created and unlocked permanently", s.PeerID, name)
 	}
 
+	// Cache the wallet so all saves share this single unlocked instance
+	s.cache.AddWallet(wallet)
+
 	return nil
 }
 
@@ -88,7 +91,7 @@ func (s *DistributedAtomicStore) GetPrivateKey(walletName string, accountName st
 	}
 
 	// Fallback to direct wallet access if cache miss
-	wallet, err := getWallet(s.Path, walletName)
+	wallet, err := getCachedWallet(s.cache, s.Path, walletName)
 	if err != nil {
 		utils.Log.Error().Err(err).Msgf("❌ Distributed Atomic Store [Peer %d]: Failed to get wallet: %s/%s", s.PeerID, walletName, accountName)
 		return nil, err
@@ -132,7 +135,7 @@ func (s *DistributedAtomicStore) SavePrivateKey(walletName string, accountName s
 	fileMu.Lock()
 	defer fileMu.Unlock()
 
-	wallet, err := getWallet(s.Path, walletName)
+	wallet, err := getCachedWallet(s.cache, s.Path, walletName)
 	if err != nil {
 		utils.Log.Error().Err(err).Msgf("❌ Distributed Atomic Store [Peer %d]: Failed to get wallet for save: %s", s.PeerID, walletName)
 		return err

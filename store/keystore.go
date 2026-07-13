@@ -59,6 +59,9 @@ func (s *KeystoreStore) CreateWallet(name string) error {
 		utils.Log.Info().Msgf("🔓 Keystore Store: Wallet %s created and unlocked permanently", name)
 	}
 
+	// Cache the wallet so all saves share this single unlocked instance
+	s.cache.AddWallet(wallet)
+
 	return nil
 }
 
@@ -98,7 +101,7 @@ func (s *KeystoreStore) SavePrivateKey(walletName string, accountName string, da
 
 	utils.Log.Debug().Msgf("💾 Keystore Store: Importing account (wallet already unlocked): %s/%s", walletName, accountName)
 
-	wallet, err := getWallet(s.Path, walletName)
+	wallet, err := getCachedWallet(s.cache, s.Path, walletName)
 	if err != nil {
 		return err
 	}

@@ -68,10 +68,9 @@ func (wc *WalletCache) PopulateFromLocationWithPrefix(ctx context.Context, locat
 		utils.Log.Info().Msgf("💾 initializing filesystem store for location: %s", location)
 	}
 
+	// Pass the store explicitly instead of e2wallet.UseStore: the package-level
+	// store is a plain global and is not safe to set from concurrent goroutines.
 	store := filesystem.New(filesystem.WithLocation(location))
-	if err := e2wallet.UseStore(store); err != nil {
-		return err
-	}
 
 	walletCount := 0
 	accountCount := 0
@@ -85,7 +84,7 @@ func (wc *WalletCache) PopulateFromLocationWithPrefix(ctx context.Context, locat
 		utils.Log.Info().Msgf("🔍 discovering wallets in location: %s", location)
 	}
 
-	for wallet := range e2wallet.Wallets() {
+	for wallet := range e2wallet.Wallets(e2wallet.WithStore(store)) {
 		walletName := wallet.Name()
 		if logPrefix != "" {
 			utils.Log.Info().Msgf("📁 processing wallet: %s [%s]", walletName, logPrefix)
@@ -197,6 +196,16 @@ func (wc *WalletCache) PopulateFromLocationWithPrefix(ctx context.Context, locat
 	}
 
 	return nil
+}
+
+// AddWallet stores a wallet object in the cache so that all goroutines share
+// a single instance per wallet: imports on one instance are serialized by the
+// wallet's own mutex and its in-memory account index stays consistent.
+func (wc *WalletCache) AddWallet(wallet types.Wallet) {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+
+	wc.wallets[wallet.Name()] = wallet
 }
 
 // FetchWallet retrieves a wallet from cache

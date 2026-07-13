@@ -100,10 +100,10 @@ func getWalletsAccountsMap(ctx context.Context, location string) ([]AccountsData
 	accs := []AccountsData{}
 	wallets := []string{}
 	store := filesystem.New(filesystem.WithLocation(location))
-	if err := e2wallet.UseStore(store); err != nil {
-		return accs, wallets, err
-	}
-	for w := range e2wallet.Wallets() {
+	// Pass the store explicitly instead of e2wallet.UseStore: the package-level
+	// store is a plain global and racing writes from concurrent goroutines can
+	// wire a wallet to the wrong store.
+	for w := range e2wallet.Wallets(e2wallet.WithStore(store)) {
 		wallets = append(wallets, w.Name())
 		for a := range w.Accounts(ctx) {
 			accs = append(accs, AccountsData{Name: a.Name(), WName: w.Name()})
@@ -136,12 +136,31 @@ func getAccountPrivateKey(ctx context.Context, account types.Account, passphrase
 	return key.Marshal(), nil
 }
 
-func getWallet(location string, n string) (types.Wallet, error) {
-	store := filesystem.New(filesystem.WithLocation(location))
-	if err := e2wallet.UseStore(store); err != nil {
+// getCachedWallet returns the shared wallet instance from the cache, opening
+// it from disk and caching it on first use. Sharing one instance per wallet
+// avoids re-reading the wallet index on every save and lets the wallet's own
+// mutex serialize concurrent imports.
+func getCachedWallet(cache *WalletCache, location string, name string) (types.Wallet, error) {
+	wallet, err := cache.FetchWallet(name)
+	if err == nil {
+		return wallet, nil
+	}
+
+	wallet, err = getWallet(location, name)
+	if err != nil {
 		return nil, err
 	}
-	w, err := e2wallet.OpenWallet(n)
+	cache.AddWallet(wallet)
+
+	return wallet, nil
+}
+
+func getWallet(location string, n string) (types.Wallet, error) {
+	store := filesystem.New(filesystem.WithLocation(location))
+	// Pass the store explicitly instead of e2wallet.UseStore: the package-level
+	// store is a plain global and racing writes from concurrent goroutines can
+	// open a wallet from the wrong store (e.g. another distributed peer's path).
+	w, err := e2wallet.OpenWallet(n, e2wallet.WithStore(store))
 	if err != nil {
 		return nil, err
 	}
