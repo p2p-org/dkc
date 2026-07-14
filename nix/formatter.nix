@@ -1,23 +1,25 @@
-{inputs, ...}: {
+{ inputs, ... }: {
   imports = [
     inputs.treefmt-nix.flakeModule
   ];
 
-  perSystem = {
-    config,
-    pkgs,
-    ...
-  }: {
-    treefmt.config = {
-      projectRootFile = ".git/config";
-      package = pkgs.treefmt;
+  perSystem =
+    {
+      config,
+      pkgs,
+      ...
+    }:
+    {
+      treefmt.config = {
+        projectRootFile = ".git/config";
+        package = pkgs.treefmt;
 
-      programs = {
-        alejandra.enable = true;
-        gofmt.enable = true;
+        programs = {
+          nixfmt.enable = true;
+          gofmt.enable = true;
+        };
       };
-    };
 
-    formatter = config.treefmt.build.wrapper;
-  };
+      formatter = config.treefmt.build.wrapper;
+    };
 }

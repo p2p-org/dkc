@@ -1,14 +1,18 @@
-{inputs, ...}: {
+{ inputs, ... }: {
   imports = [
     inputs.pre-commit-hooks-nix.flakeModule
   ];
-  perSystem = {
+  perSystem = { config, ... }: {
     pre-commit.settings = {
       hooks = {
-        alejandra.enable = true;
+        # Same formatter as `nix fmt` (treefmt: nixfmt + gofmt), so the hook
+        # can never fight the editor or the flake formatter
+        treefmt = {
+          enable = true;
+          package = config.treefmt.build.wrapper;
+        };
         deadnix.enable = true;
         statix.enable = true;
-        #gofmt.enable = true;
         #gotest.enable = true;
       };
     };
