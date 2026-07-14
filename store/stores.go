@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -90,8 +92,12 @@ func newDistributedAtomicStores(ctx context.Context, side string) ([]AtomicStore
 		peersMap[id] = peer.Name
 	}
 
+	// Iterate peers in id order: map iteration is randomized, and the first
+	// atomic store must consistently represent the same peer (GetPath and
+	// GetAccounts of the composed store delegate to it)
 	atomicStores := make([]AtomicStore, 0, len(peers))
-	for id, peer := range peers {
+	for _, id := range slices.Sorted(maps.Keys(peers)) {
+		peer := peers[id]
 		passphrases, err := getAccountsPasswords(peer.Passphrases.Path)
 		if err != nil {
 			return nil, err

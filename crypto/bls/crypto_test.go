@@ -73,3 +73,21 @@ func TestSplitRejectsInvalidKey(t *testing.T) {
 		t.Fatal("expected error for invalid key")
 	}
 }
+
+func TestZeroParticipantIDRejected(t *testing.T) {
+	var sk bls.SecretKey
+	sk.SetByCSPRNG()
+
+	masterSKs, _, err := Split(sk.Serialize(), 2)
+	if err != nil {
+		t.Fatalf("Split: %v", err)
+	}
+
+	// id 0 evaluates the sharing polynomial at x=0, which is the key itself
+	if _, err := SetupParticipants(masterSKs, []uint64{0, 10}); err == nil {
+		t.Fatal("expected error for zero participant id in SetupParticipants")
+	}
+	if _, err := Combine(map[uint64][]byte{0: masterSKs[0]}); err == nil {
+		t.Fatal("expected error for zero participant id in Combine")
+	}
+}
