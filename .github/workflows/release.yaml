@@ -7,16 +7,23 @@ on:
 env:
   artifacts_name: 'building-artifacts'
 
+permissions: {}
+
 jobs:
   tests:
     uses: ./.github/workflows/tests.yaml
+    permissions:
+      contents: read
   func-tests:
     uses: ./.github/workflows/func-tests.yaml
+    permissions:
+      contents: read
 
   prepare:
     name: Prepare Variables
     needs: [tests, func-tests]
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       release_version: ${{ steps.enver.outputs.release_version }}
       is_prerelease: ${{ steps.semver.outputs.prerelease != '' }}
@@ -34,7 +41,7 @@ jobs:
 
       - name: Parse semver
         id: semver
-        uses: madhead/semver-utils@latest
+        uses: madhead/semver-utils@4cf918affe9106ea59f86c6250e5ec4570ac4389 # v5.0.0
         with:
           version: ${{ steps.enver.outputs.release_version }}
 
@@ -45,16 +52,22 @@ jobs:
         os: [ubuntu-latest, macos-14]
     runs-on: ${{ matrix.os }}
     needs: prepare
+    permissions:
+      contents: read
     env:
       release_version: ${{needs.prepare.outputs.release_version}}
     steps:
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: 'Setup Go'
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: './go.mod'
+          # Do not share module cache with artifact-publishing runs (cache poisoning)
+          cache: false
         id: go
 
       - name: Set env
@@ -64,11 +77,14 @@ jobs:
           echo "goarch=$(go env GOARCH)" >> $GITHUB_ENV
 
       - name: Build on ${{runner.os}}
+        # Use shell variables, not ${{ }} expansions: interpolating expressions
+        # into scripts enables template injection
         run: |
           #Building for main platform
-          go build -o dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}} -ldflags="-s -w -X github.com/p2p-org/dkc/cmd.ReleaseVersion=${{env.release_version}}" .
-          tar zcf dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}
-          shasum -a 256 dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.tar.gz >dkc-${{env.release_version}}-${{env.goos}}-${{env.goarch}}.sha256
+          binary="dkc-${release_version}-${goos}-${goarch}"
+          go build -o "${binary}" -ldflags="-s -w -X github.com/p2p-org/dkc/cmd.ReleaseVersion=${release_version}" .
+          tar zcf "${binary}.tar.gz" "${binary}"
+          shasum -a 256 "${binary}.tar.gz" >"${binary}.sha256"
 
       - name: Save to artifacts
         id: artifacts-save
@@ -86,12 +102,16 @@ jobs:
     needs:
       - build
       - prepare
+    permissions:
+      contents: write # create the GitHub release
     env:
       release_version: ${{needs.prepare.outputs.release_version}}
       is_prerelease: ${{needs.prepare.outputs.is_prerelease}}
     steps:
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Download Ubuntu artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
