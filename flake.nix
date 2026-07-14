@@ -26,12 +26,17 @@
       url = "github:nix-community/ethereum.nix";
     };
   };
-  outputs = inputs @ {flake-parts, ...}:
-    flake-parts.lib.mkFlake {
-      inherit inputs;
-    }
-    {
-      imports = [./nix];
-      systems = ["x86_64-linux" "aarch64-darwin"];
-    };
+  outputs =
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake
+      {
+        inherit inputs;
+      }
+      {
+        imports = [ ./nix ];
+        systems = [
+          "x86_64-linux"
+          "aarch64-darwin"
+        ];
+      };
 }
