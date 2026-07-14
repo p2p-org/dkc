@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ['main']
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yaml
+    permissions:
+      contents: read
+
+  func-tests:
+    uses: ./.github/workflows/func-tests.yaml
+    permissions:
+      contents: read
+
+  # Aggregate job for branch protection: add "CI Passed" as the single
+  # required check. `if: always()` ensures it runs (and fails) even when a
+  # dependency fails - a skipped required check would otherwise satisfy
+  # branch protection.
+  ci-passed:
+    name: CI Passed
+    if: always()
+    needs: [tests, func-tests]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Check that all jobs succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "job results: ${RESULTS}"
+          for result in ${RESULTS}; do
+            if [ "${result}" != "success" ]; then
+              echo "at least one job did not succeed"
+              exit 1
+            fi
+          done

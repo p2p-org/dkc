@@ -10,9 +10,9 @@
     },
     {
       "description": "Set PR labels",
-      "matchPackageNames": [".*"],
+      "matchPackageNames": ["*"],
       "labels": ["renovate"]
-    },
+    }
   ],
   "dependencyDashboard": true,
   "semanticCommits": "enabled",
