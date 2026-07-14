@@ -1,8 +1,7 @@
 # Dirk Key Converter (dkc)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/p2p-org/dkc)](https://goreportcard.com/report/github.com/p2p-org/dkc)
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/p2p-org/dkc/snyk.yaml?logo=snyk&label=security)
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/p2p-org/dkc/func-tests.yaml)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/p2p-org/dkc/ci.yaml?label=ci)
 
 A command-line tool for converting Ethereum wallets from:
 - [distributed](https://github.com/wealdtech/go-eth2-wallet-distributed)
@@ -17,7 +16,7 @@ to:
 - [keystore](https://github.com/wealdtech/go-eth2-wallet-keystore)
 
 > [!CAUTION]
-> It is highly recommended to refrain from any operations on the validation keys and use the provided script only in critical situations to avoid any ponential risks of slashing.
+> It is highly recommended to refrain from any operations on the validation keys and use the provided script only in critical situations to avoid any potential risks of slashing.
 
 ## Table of Contents
 
@@ -59,17 +58,17 @@ $ go build .
 > [!CAUTION]
 > Before you begin, make sure you backup keys and store recovered wallets and passwords securely.
 
-`dkc` uses [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary). You can test `dkc` on predefiened inputs [here](.github/workflows/func-tests.yml). 
+`dkc` uses [herumi/bls-eth-go-binary](https://github.com/herumi/bls-eth-go-binary). You can test `dkc` on predefined inputs [here](.github/workflows/func-tests.yaml).
 
 ### Config
 
 An example config for each pair could be found [here](.github/examples/)
 
-The example below shows how to convert wallets from `distributed` type to `hierarchical deterministic` type. 
+The example below shows how to convert wallets from `distributed` type to `non-deterministic` type (note: `hierarchical deterministic` can only be used as input - HD keys are derived from a mnemonic and cannot be imported).
 
 `base-dir` for `distributed` wallets is located in `./i_wallet` see more info about `distributed` wallet file structure [here](#distributed)
 
-`base-dir` for `hierarchical deterministic` wallets is located in `./o_wallet` see more info about `hierarchical deterministic` wallet file structure [here](#hierarchical-deterministic)
+`base-dir` for `non-deterministic` wallets is located in `./o_wallet` see more info about `non-deterministic` wallet file structure [here](#non-deterministic)
 
 ```yaml
 input:                              #Input section
@@ -98,8 +97,8 @@ output:                             #Output Wallet Section
   store:
     path: ./o_wallet
   wallet:
-    type: hierarchical deterministic
-    passphrases:                    
+    type: non-deterministic         #Valid output types are: distributed, non-deterministic, keystore
+    passphrases:
       path: ./o_passphrases.txt
 log-level: debug                    #Log-level (Default: INFO)
 ```
@@ -139,7 +138,7 @@ All of the keys with corresponding names (ex: `name = 1`) should be the threshol
 
 #### Hierarchical Deterministic
 
-This wallet type can be used only ad input wallet. More information about this wallet type is provided [here](https://github.com/wealdtech/go-eth2-wallet-hd)
+This wallet type can be used only as input wallet. More information about this wallet type is provided [here](https://github.com/wealdtech/go-eth2-wallet-hd)
 
 The following is an [example](.github/examples/hd-to-distributed/hd) file structure. The `base-dir` wallet directory is `hd-to-distributed/hd` 
 
@@ -155,10 +154,10 @@ Wallet2
 
 This wallet type can be used as input or output wallet. More information about this wallet type is provided [here](https://github.com/wealdtech/go-eth2-wallet-nd)
 
-The following is an [example](.github/examples/nd-to-distributed/nd) file structure. The `base-dir` wallet directory is `hd-to-distributed/nd` 
+The following is an [example](.github/examples/nd-to-distributed/nd) file structure. The `base-dir` wallet directory is `nd-to-distributed/nd`
 
 ```
-$ ethdo wallet --base-dir nd-to-distributed/hd list
+$ ethdo wallet --base-dir nd-to-distributed/nd list
 Wallet1
 Wallet3
 Wallet2
@@ -191,17 +190,16 @@ input:
 
 ### Convert
 
-After preparing config and backuping keys simply run:
+After preparing config and backing up keys simply run:
 
 ```sh
 ./dkc convert --config=config.yaml
 ```
 
-## Maintainers
+Useful flags:
 
-Sergey Yakovlev: [@selfuryon](https://github.com/selfuryon).
-
-SpontaneousOverthrow: [@SpontaneousOverthrow](https://github.com/SpontaneousOverthrow).
+- `--log-level` - overrides the config log level
+- `--pprof` - enables a profiling server on `localhost:6060` (off by default)
 
 ## Contribute
 
