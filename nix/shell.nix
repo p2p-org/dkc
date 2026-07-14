@@ -21,6 +21,7 @@
       gmp
       gcc
       pinact
+      zizmor
       ;
     inherit (inputs'.ethereum-nix.packages) ethdo;
   in {
@@ -45,6 +46,7 @@
         ethdo
         act
         gmp
+        zizmor
       ];
       devshell.startup = {
         pre-commit.text = config.pre-commit.installationScript;
