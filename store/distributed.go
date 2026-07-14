@@ -3,245 +3,175 @@ package store
 import (
 	"context"
 	"fmt"
-	"regexp"
 
-	"github.com/p2p-org/dkc/crypto/bls"
 	"github.com/p2p-org/dkc/utils"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	e2wallet "github.com/wealdtech/go-eth2-wallet"
 	types "github.com/wealdtech/go-eth2-wallet-types/v2"
-	"golang.org/x/exp/maps"
 )
 
-type Peers map[uint64]Peer
-type Peer struct {
-	Name        string
-	Passphrases struct {
-		Path  string
-		Index int
-	}
+// DistributedAtomicStore represents a single peer in a distributed store
+type DistributedAtomicStore struct {
+	Type        string
+	Path        string
+	Passphrases [][]byte
+	Ctx         context.Context
+	cache       *WalletCache
+
+	// Distributed store specific fields
+	PeerID    uint64
+	PeerName  string
+	Threshold uint32
+	Peers     map[uint64]string // All peers in the distributed store
 }
 
-type Threshold uint32
-type DistributedStore struct {
-	Type           string
-	Path           string
-	Peers          map[uint64]string
-	PeersPasswords map[uint64][][]byte
-	PeersPaths     map[uint64]string
-	Threshold      Threshold
-	Ctx            context.Context
-}
+var _ AtomicStore = (*DistributedAtomicStore)(nil)
 
-func (s *DistributedStore) Create() error {
-	for id := range s.Peers {
-		_, err := createStore(s.PeersPaths[id])
-		if err != nil {
-			return err
+// newDistributedAtomicStore creates a distributed atomic store for a single peer
+func newDistributedAtomicStore(
+	ctx context.Context,
+	side string,
+	peerID uint64,
+	peerName string,
+	path string,
+	walletType string,
+	passphrases [][]byte,
+	threshold uint32,
+	peers map[uint64]string,
+) (*DistributedAtomicStore, error) {
+	s := &DistributedAtomicStore{
+		Type:        walletType,
+		Path:        path,
+		Passphrases: passphrases,
+		Ctx:         ctx,
+		cache:       NewWalletCache(),
+		PeerID:      peerID,
+		PeerName:    peerName,
+		Threshold:   threshold,
+		Peers:       peers,
+	}
+
+	// Input stores serve reads: populate the cache up front
+	if side == "input" {
+		prefix := fmt.Sprintf("Peer %d", peerID)
+		if err := s.cache.PopulateFromLocation(ctx, path, passphrases, prefix); err != nil {
+			return nil, errors.Wrapf(err, "failed to populate distributed store cache for peer %d", peerID)
 		}
 	}
-
-	return nil
-}
-
-func (s *DistributedStore) GetWalletsAccountsMap() ([]AccountsData, []string, error) {
-	// We assume that all distributed wallets in the store have the same accounts
-	peers := maps.Values(s.Peers)
-	res, err := regexp.Compile(`:.*`)
-	if err != nil {
-		return nil, nil, err
-	}
-	a, w, err := getWalletsAccountsMap(s.Ctx, s.Path+"/"+res.ReplaceAllString(peers[0], ""))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return a, w, nil
-}
-
-func (s *DistributedStore) CreateWallet(name string) error {
-	for id := range s.Peers {
-		store, err := getStore(s.PeersPaths[id])
-		if err != nil {
-			return err
-		}
-		_, err = e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(store))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *DistributedStore) GetPK(w string, a string) ([]byte, error) {
-	accounts := map[uint64][]byte{}
-
-	for id := range s.Peers {
-		wallet, err := getWallet(s.PeersPaths[id], w)
-		if err != nil {
-			return nil, err
-		}
-		err = wallet.(types.WalletLocker).Unlock(s.Ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-
-		defer func() {
-			err = wallet.(types.WalletLocker).Lock(s.Ctx)
-		}()
-
-		account, err := wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, a)
-		if err != nil {
-			return nil, err
-		}
-
-		key, err := getAccountPK(account, s.Ctx, s.PeersPasswords[id])
-		if err != nil {
-			return nil, err
-		}
-
-		accounts[id] = key
-
-	}
-	key, err := bls.Combine(s.Ctx, accounts)
-	if err != nil {
-		return nil, err
-	}
-	return key, nil
-}
-
-func (s *DistributedStore) SavePKToWallet(w string, a []byte, n string) error {
-	// Spliting PK to shards and get Public and Private Keys for each shard
-	masterSKs, masterPKs, err := bls.Split(s.Ctx, a, uint32(s.Threshold))
-	if err != nil {
-		return err
-	}
-
-	peersIDs := maps.Keys(s.Peers)
-	participants, err := bls.SetupParticipants(masterSKs, masterPKs, peersIDs, len(s.Peers))
-	if err != nil {
-		return err
-	}
-
-	for id := range s.Peers {
-		wallet, err := getWallet(s.PeersPaths[id], w)
-		if err != nil {
-			return err
-		}
-		err = wallet.(types.WalletLocker).Unlock(s.Ctx, nil)
-		if err != nil {
-			return err
-		}
-
-		defer func() {
-			err = wallet.(types.WalletLocker).Lock(s.Ctx)
-		}()
-
-		_, err = wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(
-			s.Ctx,
-			n,
-			participants[id],
-			uint32(s.Threshold),
-			masterPKs,
-			s.Peers,
-			//Always Use The First Password In Array
-			s.PeersPasswords[id][0],
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func newDistributedStore(t string) (DistributedStore, error) {
-	s := DistributedStore{}
-	//Parse Wallet Type
-
-	wt := viper.GetString(fmt.Sprintf("%s.wallet.type", t))
-
-	utils.Log.Debug().Msgf("setting store type to %s", wt)
-	s.Type = wt
-
-	//Parse Store Path
-	storePath := viper.GetString(fmt.Sprintf("%s.store.path", t))
-	utils.Log.Debug().Msgf("setting store path to %s", storePath)
-	if storePath == "" {
-		return s, errors.New("distributed store path is empty")
-	}
-	s.Path = storePath
-
-	//Parse Peers
-	var peers Peers
-	utils.Log.Debug().Msgf("getting peers")
-	err := viper.UnmarshalKey(fmt.Sprintf("%s.wallet.peers", t), &peers)
-	if err != nil {
-		return s, err
-	}
-
-	//Peers list must be >= 2
-	utils.Log.Debug().Msgf("checking peers length: %d", len(peers))
-	if len(peers) < 2 {
-		return s, errors.New("number of peers for distributed store is less than 2")
-	}
-
-	// Parse Peers Passwords Paths and Names
-	// Regexp To Get Peers Path
-	res, err := regexp.Compile(`:.*`)
-	if err != nil {
-		return s, err
-	}
-	s.Peers = map[uint64]string{}
-	s.PeersPasswords = map[uint64][][]byte{}
-	s.PeersPaths = map[uint64]string{}
-	for id, peer := range peers {
-		//Parse Passphrases
-		utils.Log.Debug().Msgf("getting passhphrases for peers %s", peer.Name)
-		passphrases, err := getAccountsPasswords(peer.Passphrases.Path)
-		if err != nil {
-			return s, err
-		}
-		utils.Log.Debug().Msgf("checking passhphrases len: %d for peers %s", len(passphrases), peer.Name)
-		if len(passphrases) == 0 {
-			return s, errors.New("passhparases file for distributed peer is empty")
-		}
-		// Cheking If Passphrases Index Is Set
-		if viper.IsSet(fmt.Sprintf("%s.peers.%d.passphrases.index", t, id)) {
-			passphrases = [][]byte{passphrases[viper.GetInt(fmt.Sprintf("%s.peers.%d.passphrases.index", t, id))]}
-		}
-		s.Peers[id] = peer.Name
-		s.PeersPasswords[id] = passphrases
-		s.PeersPaths[id] = s.Path + "/" + res.ReplaceAllString(peer.Name, "")
-	}
-
-	//Parse Threshold
-	var threshold Threshold
-	utils.Log.Debug().Msgf("getting threshold value")
-	err = viper.UnmarshalKey(fmt.Sprintf("%s.wallet.threshold", t), &threshold)
-	if err != nil {
-		return s, err
-	}
-
-	//Check number of peers and threshold
-	utils.Log.Debug().Msgf("checking threshold value")
-	if uint32(threshold) <= uint32(len(peers)/2) {
-		return s, errors.New("thershold value for distributed store is less than peers/2")
-	}
-	if uint32(threshold) > uint32(len(peers)) {
-		return s, errors.New("threshold value for distributed store is more than peer")
-	}
-
-	s.Threshold = threshold
 
 	return s, nil
 }
 
-func (s *DistributedStore) GetPath() string {
+func (s *DistributedAtomicStore) Create() error {
+	// Nothing to do: the filesystem store creates directories lazily on write
+	return nil
+}
+
+func (s *DistributedAtomicStore) GetAccounts() ([]AccountsData, []string, error) {
+	return getWalletsAccountsMap(s.Ctx, s.Path)
+}
+
+func (s *DistributedAtomicStore) CreateWallet(name string) error {
+	wallet, err := e2wallet.CreateWallet(name, e2wallet.WithType(s.Type), e2wallet.WithStore(newFSStore(s.Path)))
+	if err != nil {
+		return err
+	}
+
+	// Unlock wallet immediately after creation and keep it unlocked
+	if err := wallet.(types.WalletLocker).Unlock(s.Ctx, nil); err != nil {
+		// Don't return error, wallet might not require unlocking
+		utils.Log.Warn().Err(err).Msgf("⚠️ Distributed Store [Peer %d]: failed to unlock wallet after creation: %s", s.PeerID, name)
+	} else {
+		utils.Log.Info().Msgf("🔓 Distributed Store [Peer %d]: wallet %s created and unlocked permanently", s.PeerID, name)
+	}
+
+	s.cache.PutWallet(wallet)
+
+	return nil
+}
+
+func (s *DistributedAtomicStore) GetPrivateKey(walletName string, accountName string) ([]byte, error) {
+	utils.Log.Info().Msgf("🔐 Distributed Store [Peer %d]: getting private key shard for account: %s/%s", s.PeerID, walletName, accountName)
+
+	// Try to get account from cache first
+	account, err := s.cache.FetchAccount(walletName, accountName)
+	if err != nil {
+		utils.Log.Warn().Msgf("⚠️ Distributed Store [Peer %d]: account not found in cache, falling back to direct access: %s/%s", s.PeerID, walletName, accountName)
+
+		wallet, err := s.cache.GetOrOpenWallet(s.Path, walletName)
+		if err != nil {
+			utils.Log.Error().Err(err).Msgf("❌ Distributed Store [Peer %d]: failed to get wallet: %s/%s", s.PeerID, walletName, accountName)
+			return nil, err
+		}
+		if err := wallet.(types.WalletLocker).Unlock(s.Ctx, nil); err != nil {
+			utils.Log.Error().Err(err).Msgf("❌ Distributed Store [Peer %d]: failed to unlock wallet: %s/%s", s.PeerID, walletName, accountName)
+			return nil, err
+		}
+
+		account, err = wallet.(types.WalletAccountByNameProvider).AccountByName(s.Ctx, accountName)
+		if err != nil {
+			utils.Log.Error().Err(err).Msgf("❌ Distributed Store [Peer %d]: failed to get account: %s/%s", s.PeerID, walletName, accountName)
+			return nil, err
+		}
+	}
+
+	key, err := getAccountPrivateKey(s.Ctx, account, s.Passphrases)
+	if err != nil {
+		utils.Log.Error().Err(err).Msgf("❌ Distributed Store [Peer %d]: failed to get private key: %s/%s", s.PeerID, walletName, accountName)
+		return nil, err
+	}
+
+	utils.Log.Debug().Msgf("✅ Distributed Store [Peer %d]: successfully got key shard for account: %s/%s", s.PeerID, walletName, accountName)
+	return key, nil
+}
+
+func (s *DistributedAtomicStore) SavePrivateKey(walletName string, accountName string, data any) error {
+	utils.Log.Info().Msgf("💾 Distributed Store [Peer %d]: saving private key shard for account: %s/%s", s.PeerID, walletName, accountName)
+
+	shardData, ok := data.(*DistributedAccountData)
+	if !ok {
+		return errors.Errorf("invalid data type for distributed store - expected *DistributedAccountData, got %T", data)
+	}
+
+	// Use the shared wallet instance so concurrent imports serialize on the
+	// wallet's own mutex and index updates are never lost
+	wallet, err := s.cache.GetOrOpenWallet(s.Path, walletName)
+	if err != nil {
+		utils.Log.Error().Err(err).Msgf("❌ Distributed Store [Peer %d]: failed to get wallet for save: %s", s.PeerID, walletName)
+		return err
+	}
+
+	// No need to unlock - wallet is already unlocked permanently after creation
+	utils.Log.Debug().Msgf("🔧 Distributed Store [Peer %d]: importing distributed account with threshold %d", s.PeerID, shardData.Threshold)
+
+	_, err = wallet.(types.WalletDistributedAccountImporter).ImportDistributedAccount(
+		s.Ctx,
+		accountName,
+		shardData.ParticipantShard,
+		shardData.Threshold,
+		shardData.MasterPKs,
+		shardData.Peers,
+		s.Passphrases[0], // Always use the first password
+	)
+	if err != nil {
+		utils.Log.Error().Err(err).Msgf("❌ Distributed Store [Peer %d]: failed to import distributed account: %s/%s", s.PeerID, walletName, accountName)
+		return err
+	}
+
+	utils.Log.Info().Msgf("✅ Distributed Store [Peer %d]: successfully saved key shard for account: %s/%s", s.PeerID, walletName, accountName)
+	return nil
+}
+
+func (s *DistributedAtomicStore) GetPath() string {
 	return s.Path
 }
 
-func (s *DistributedStore) GetType() string {
-	return s.Type
+// GetThreshold returns the threshold for this distributed store
+func (s *DistributedAtomicStore) GetThreshold() uint32 {
+	return s.Threshold
+}
+
+// GetPeers returns all peers in the distributed store
+func (s *DistributedAtomicStore) GetPeers() map[uint64]string {
+	return s.Peers
 }

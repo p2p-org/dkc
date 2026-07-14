@@ -8,7 +8,21 @@
     config,
     ...
   }: let
-    inherit (pkgs) go go-outline golangci-lint gopkgs gopls gotools openssl act gmp gcc;
+    inherit
+      (pkgs)
+      go
+      go-outline
+      golangci-lint
+      gopkgs
+      gopls
+      gotools
+      openssl
+      act
+      gmp
+      gcc
+      pinact
+      zizmor
+      ;
     inherit (inputs'.ethereum-nix.packages) ethdo;
   in {
     devshells.default = {
@@ -20,6 +34,7 @@
         }
       ];
       packages = [
+        pinact
         go
         gcc
         go-outline
@@ -31,6 +46,7 @@
         ethdo
         act
         gmp
+        zizmor
       ];
       devshell.startup = {
         pre-commit.text = config.pre-commit.installationScript;

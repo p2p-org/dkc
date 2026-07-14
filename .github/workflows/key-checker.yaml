@@ -1,0 +1,16 @@
+name: Key Verification Checker
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write # zizmor: ignore[excessive-permissions]
+  issues: write # zizmor: ignore[excessive-permissions]
+
+jobs:
+  key-checker:
+    uses: p2p-org/security-workflows/.github/workflows/key-checker.yaml@bdcd27ebbbef98cbdc8497eca0fcc8e9b718b5de # main
+    secrets: inherit # zizmor: ignore[secrets-inherit]

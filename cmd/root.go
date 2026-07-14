@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strings"
 
@@ -21,6 +23,14 @@ var rootCmd = &cobra.Command{
 	Short: "Dirk Key Converter",
 	Long:  `Allow to split and combine keystores and distributed wallets for Dirk`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// pprof is opt-in: the process handles raw private keys, so the
+		// profiling endpoint must not be exposed unless explicitly requested
+		if viper.GetBool("pprof") {
+			go func() {
+				utils.Log.Info().Msg("Starting pprof server on :6060")
+				utils.Log.Error().Err(http.ListenAndServe("localhost:6060", nil)).Send()
+			}()
+		}
 	},
 }
 
@@ -37,6 +47,12 @@ func init() {
 
 	rootCmd.PersistentFlags().String("log-level", "INFO", "Log Level")
 	err := viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
+	if err != nil {
+		utils.Log.Fatal().Err(err).Send()
+	}
+
+	rootCmd.PersistentFlags().Bool("pprof", false, "enable pprof server on localhost:6060")
+	err = viper.BindPFlag("pprof", rootCmd.PersistentFlags().Lookup("pprof"))
 	if err != nil {
 		utils.Log.Fatal().Err(err).Send()
 	}
