@@ -42,10 +42,11 @@ func process(data *dataIn) error {
 	utils.Log.Info().Msgf("converting accounts with parallel GetPrivateKey -> SavePrivateKey pipeline")
 
 	// Use errgroup to handle errors from parallel account processing.
-	// Limit concurrency: keystorev4 scrypt uses ~256MiB per Encrypt call,
-	// so unbounded goroutines can exhaust memory on large account sets.
+	// Key encryption (keystorev4 pbkdf2 by default) is CPU-bound, so one
+	// worker per core; the limit also keeps memory bounded if a store is
+	// configured with scrypt (~256MiB per Encrypt call).
 	accountGroup := errgroup.Group{}
-	accountGroup.SetLimit(min(runtime.NumCPU(), 8))
+	accountGroup.SetLimit(runtime.NumCPU())
 
 	// Process each account in parallel: GetPrivateKey -> SavePrivateKey
 	for _, acc := range accountsList {
