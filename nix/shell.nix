@@ -8,7 +8,20 @@
     config,
     ...
   }: let
-    inherit (pkgs) go go-outline golangci-lint gopkgs gopls gotools openssl act gmp gcc;
+    inherit
+      (pkgs)
+      go
+      go-outline
+      golangci-lint
+      gopkgs
+      gopls
+      gotools
+      openssl
+      act
+      gmp
+      gcc
+      pinact
+      ;
     inherit (inputs'.ethereum-nix.packages) ethdo;
   in {
     devshells.default = {
@@ -20,6 +33,7 @@
         }
       ];
       packages = [
+        pinact
         go
         gcc
         go-outline

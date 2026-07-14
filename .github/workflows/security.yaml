@@ -3,12 +3,29 @@ name: Security Testing
 on:
   workflow_dispatch:
   pull_request:
-    types: [ opened, synchronize ]
+    types: [opened, synchronize]
+  schedule:
+    - cron: "0 0 * * SAT"
+
+permissions:
+  contents: read
+  pull-requests: write # zizmor: ignore[excessive-permissions]
+  issues: write # zizmor: ignore[excessive-permissions]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   sast:
-    uses: p2p-org/security-workflows/.github/workflows/sast.yaml@main
-    secrets: inherit
+    uses: p2p-org/security-workflows/.github/workflows/sast.yaml@bdcd27ebbbef98cbdc8497eca0fcc8e9b718b5de # main
+    secrets: inherit # zizmor: ignore[secrets-inherit]
   sca:
-    uses: p2p-org/security-workflows/.github/workflows/sca.yaml@main
-    secrets: inherit
+    uses: p2p-org/security-workflows/.github/workflows/sca.yaml@bdcd27ebbbef98cbdc8497eca0fcc8e9b718b5de # main
+    secrets: inherit # zizmor: ignore[secrets-inherit]
+  security-quality-gate:
+    uses: p2p-org/security-workflows/.github/workflows/security-quality-gate.yaml@bdcd27ebbbef98cbdc8497eca0fcc8e9b718b5de # main
+    secrets: inherit # zizmor: ignore[secrets-inherit]
+    needs: [sast, sca]
+    with:
+      block: false
