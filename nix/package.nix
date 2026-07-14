@@ -12,9 +12,11 @@
       inherit pname version;
       src = ../.;
 
-      vendorHash = "sha256-eDx5pYecYnGWXVmLTl4S57hrwQCxk96a4MSN6O+CS30=";
+      vendorHash = "sha256-6W+hUANdSqDjCAaucIhRPGQQzUIuKK+Fihbp3KG7osw=";
 
       buildInputs = [mcl bls];
+
+      env.CGO_LDFLAGS = "-lmcl";
 
       ldflags = [
         "-s"

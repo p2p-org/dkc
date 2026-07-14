@@ -3,15 +3,13 @@ package store
 import (
 	"context"
 	"fmt"
-	"regexp"
+	"strings"
 
-	"github.com/p2p-org/dkc/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
-// Types moved from distributed_old.go
-type Peers map[uint64]Peer
+// Peer is a single peer entry of a distributed store config
 type Peer struct {
 	Name        string
 	Passphrases struct {
@@ -20,229 +18,99 @@ type Peer struct {
 	}
 }
 
-type Threshold uint32
-
 // InputStoreComposed creates a new ComposedStore for input operations
-func InputStoreComposed(ctx context.Context, storeType string) (*ComposedStore, error) {
-	switch storeType {
-	case "hierarchical deterministic":
-		atomic, err := createHDAtomicStore(ctx, "input")
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create HD atomic store")
-		}
-		return NewComposedStore([]AtomicStore{atomic}, "HD"), nil
-
-	case "non-deterministic":
-		atomic, err := createNDAtomicStore(ctx, "input")
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create ND atomic store")
-		}
-		return NewComposedStore([]AtomicStore{atomic}, "ND"), nil
-
-	case "keystore":
-		atomic, err := createKeystoreAtomicStore(ctx, "input")
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create Keystore atomic store")
-		}
-		return NewComposedStore([]AtomicStore{atomic}, "Keystore"), nil
-
-	case "distributed":
-		atomics, err := createDistributedAtomicStores(ctx, "input")
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create Distributed atomic stores")
-		}
-		return NewComposedStore(atomics, "Distributed"), nil
-
-	default:
-		return nil, errors.New("incorrect input wallet type")
-	}
+func InputStoreComposed(ctx context.Context, walletType string) (*ComposedStore, error) {
+	return newComposedStore(ctx, "input", walletType)
 }
 
 // OutputStoreComposed creates a new ComposedStore for output operations
-func OutputStoreComposed(ctx context.Context, storeType string) (*ComposedStore, error) {
-	switch storeType {
+func OutputStoreComposed(ctx context.Context, walletType string) (*ComposedStore, error) {
+	return newComposedStore(ctx, "output", walletType)
+}
+
+func newComposedStore(ctx context.Context, side string, walletType string) (*ComposedStore, error) {
+	switch walletType {
 	case "hierarchical deterministic":
-		atomic, err := createHDAtomicStore(ctx, "output")
+		s, err := newHDStore(ctx, side)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create HD atomic store")
+			return nil, errors.Wrap(err, "failed to create HD store")
 		}
-		return NewComposedStore([]AtomicStore{atomic}, "HD"), nil
+		return NewComposedStore([]AtomicStore{s}, "HD"), nil
 
 	case "non-deterministic":
-		atomic, err := createNDAtomicStore(ctx, "output")
+		s, err := newSimpleStore(ctx, side, "ND Store")
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create ND atomic store")
+			return nil, errors.Wrap(err, "failed to create ND store")
 		}
-		return NewComposedStore([]AtomicStore{atomic}, "ND"), nil
+		return NewComposedStore([]AtomicStore{s}, "ND"), nil
 
 	case "keystore":
-		atomic, err := createKeystoreAtomicStore(ctx, "output")
+		s, err := newSimpleStore(ctx, side, "Keystore Store")
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create Keystore atomic store")
+			return nil, errors.Wrap(err, "failed to create Keystore store")
 		}
-		return NewComposedStore([]AtomicStore{atomic}, "Keystore"), nil
+		return NewComposedStore([]AtomicStore{s}, "Keystore"), nil
 
 	case "distributed":
-		atomics, err := createDistributedAtomicStores(ctx, "output")
+		atomics, err := newDistributedAtomicStores(ctx, side)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create Distributed atomic stores")
+			return nil, errors.Wrap(err, "failed to create Distributed stores")
 		}
 		return NewComposedStore(atomics, "Distributed"), nil
 
 	default:
-		return nil, errors.New("incorrect output wallet type")
+		return nil, fmt.Errorf("incorrect %s wallet type: %q", side, walletType)
 	}
 }
 
-// Helper functions to create atomic stores
-
-func createHDAtomicStore(ctx context.Context, storeType string) (AtomicStore, error) {
-	store, err := newHDStore(storeType)
-	if err != nil {
-		return nil, err
-	}
-	store.SetContext(ctx)
-
-	// Populate cache for input stores
-	if storeType == "input" {
-		utils.Log.Info().Msgf("💾 HD Store: Starting cache population for input store")
-		err = store.GetCache().PopulateFromLocation(ctx, store.GetPath(), store.Passphrases)
-		if err != nil {
-			utils.Log.Error().Err(err).Msgf("❌ HD Store: Failed to populate cache")
-			return nil, errors.Wrap(err, "failed to populate HD store cache")
-		}
-		utils.Log.Info().Msgf("✅ HD Store: Cache population completed for input store")
-	}
-
-	return &store, nil
-}
-
-func createNDAtomicStore(ctx context.Context, storeType string) (AtomicStore, error) {
-	store, err := newNDStore(storeType)
-	if err != nil {
-		return nil, err
-	}
-	store.SetContext(ctx)
-
-	// Populate cache for input stores
-	if storeType == "input" {
-		utils.Log.Info().Msgf("💾 ND Store: Starting cache population for input store")
-		err = store.GetCache().PopulateFromLocation(ctx, store.GetPath(), store.Passphrases)
-		if err != nil {
-			utils.Log.Error().Err(err).Msgf("❌ ND Store: Failed to populate cache")
-			return nil, errors.Wrap(err, "failed to populate ND store cache")
-		}
-		utils.Log.Info().Msgf("✅ ND Store: Cache population completed for input store")
-	}
-
-	return &store, nil
-}
-
-func createKeystoreAtomicStore(ctx context.Context, storeType string) (AtomicStore, error) {
-	store, err := newKeystoreStore(storeType)
-	if err != nil {
-		return nil, err
-	}
-	store.SetContext(ctx)
-
-	// Populate cache for input stores
-	if storeType == "input" {
-		utils.Log.Info().Msgf("💾 Keystore Store: Starting cache population for input store")
-		err = store.GetCache().PopulateFromLocation(ctx, store.GetPath(), store.Passphrases)
-		if err != nil {
-			utils.Log.Error().Err(err).Msgf("❌ Keystore Store: Failed to populate cache")
-			return nil, errors.Wrap(err, "failed to populate keystore store cache")
-		}
-		utils.Log.Info().Msgf("✅ Keystore Store: Cache population completed for input store")
-	}
-
-	return &store, nil
-}
-
-func createDistributedAtomicStores(ctx context.Context, storeType string) ([]AtomicStore, error) {
-	// Parse configuration similar to existing newDistributedStore
-	walletType := viper.GetString(fmt.Sprintf("%s.wallet.type", storeType))
-	storePath := viper.GetString(fmt.Sprintf("%s.store.path", storeType))
+// newDistributedAtomicStores creates one atomic store per configured peer
+func newDistributedAtomicStores(ctx context.Context, side string) ([]AtomicStore, error) {
+	walletType := viper.GetString(side + ".wallet.type")
+	storePath := viper.GetString(side + ".store.path")
 	if storePath == "" {
 		return nil, errors.New("distributed store path is empty")
 	}
 
-	// Parse Peers
-	var peers Peers
-	err := viper.UnmarshalKey(fmt.Sprintf("%s.wallet.peers", storeType), &peers)
-	if err != nil {
+	var peers map[uint64]Peer
+	if err := viper.UnmarshalKey(side+".wallet.peers", &peers); err != nil {
 		return nil, err
 	}
 	if len(peers) < 2 {
 		return nil, errors.New("number of peers for distributed store is less than 2")
 	}
 
-	// Parse Threshold
-	var threshold Threshold
-	err = viper.UnmarshalKey(fmt.Sprintf("%s.wallet.threshold", storeType), &threshold)
-	if err != nil {
-		return nil, err
-	}
-	if uint32(threshold) <= uint32(len(peers)/2) || uint32(threshold) > uint32(len(peers)) {
+	threshold := viper.GetUint32(side + ".wallet.threshold")
+	if threshold <= uint32(len(peers)/2) || threshold > uint32(len(peers)) {
 		return nil, errors.New("invalid threshold value for distributed store")
 	}
 
-	// Create atomic stores for each peer
-	var atomicStores []AtomicStore
-	peersMap := make(map[uint64]string)
-	res, err := regexp.Compile(`:.*`)
-	if err != nil {
-		return nil, err
+	// Build the full peer map first: every atomic store gets the complete map
+	peersMap := make(map[uint64]string, len(peers))
+	for id, peer := range peers {
+		peersMap[id] = peer.Name
 	}
 
+	atomicStores := make([]AtomicStore, 0, len(peers))
 	for id, peer := range peers {
-		// Parse passphrases for this peer
 		passphrases, err := getAccountsPasswords(peer.Passphrases.Path)
 		if err != nil {
 			return nil, err
 		}
-		if len(passphrases) == 0 {
-			return nil, errors.New("passphrases file for distributed peer is empty")
+		passphrases, err = selectPassphrase(passphrases, fmt.Sprintf("%s.wallet.peers.%d.passphrases.index", side, id))
+		if err != nil {
+			return nil, err
 		}
 
-		// Check if passphrases index is set
-		if viper.IsSet(fmt.Sprintf("%s.peers.%d.passphrases.index", storeType, id)) {
-			index := viper.GetInt(fmt.Sprintf("%s.peers.%d.passphrases.index", storeType, id))
-			passphrases = [][]byte{passphrases[index]}
-		}
+		// Peer name is "host:port"; the peer directory is named after the host
+		peerDir, _, _ := strings.Cut(peer.Name, ":")
+		peerPath := storePath + "/" + peerDir
 
-		peersMap[id] = peer.Name
-		peerPath := storePath + "/" + res.ReplaceAllString(peer.Name, "")
-
-		// Create atomic store for this peer
-		atomicStore := NewDistributedAtomicStore(
-			id,
-			peer.Name,
-			peerPath,
-			walletType,
-			passphrases,
-			uint32(threshold),
-			peersMap,
-		)
-		atomicStore.SetContext(ctx)
-
-		// Populate cache for input stores
-		if storeType == "input" {
-			utils.Log.Info().Msgf("🔄 Distributed Store: Populating cache for peer %d (%s)", id, peer.Name)
-			peerPrefix := fmt.Sprintf("Peer %d", id)
-			err = atomicStore.GetCache().PopulateFromLocationWithPrefix(ctx, peerPath, passphrases, peerPrefix)
-			if err != nil {
-				utils.Log.Error().Err(err).Msgf("❌ Distributed Store: Failed to populate cache for peer %d", id)
-				return nil, errors.Wrap(err, fmt.Sprintf("failed to populate distributed store cache for peer %d", id))
-			}
-			utils.Log.Info().Msgf("✅ Distributed Store: Cache population completed for peer %d (%s)", id, peer.Name)
+		atomicStore, err := newDistributedAtomicStore(ctx, side, id, peer.Name, peerPath, walletType, passphrases, threshold, peersMap)
+		if err != nil {
+			return nil, err
 		}
 
 		atomicStores = append(atomicStores, atomicStore)
-	}
-
-	if storeType == "input" {
-		utils.Log.Info().Msgf("🎉 Distributed Store: All peer caches populated successfully")
 	}
 
 	return atomicStores, nil

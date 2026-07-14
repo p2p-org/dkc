@@ -1,6 +1,8 @@
 package convert
 
 import (
+	"runtime"
+
 	"github.com/p2p-org/dkc/utils"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -39,8 +41,11 @@ func process(data *dataIn) error {
 	// Converting Accounts - Full pipeline per account in parallel
 	utils.Log.Info().Msgf("converting accounts with parallel GetPrivateKey -> SavePrivateKey pipeline")
 
-	// Use errgroup to handle errors from parallel account processing
+	// Use errgroup to handle errors from parallel account processing.
+	// Limit concurrency: keystorev4 scrypt uses ~256MiB per Encrypt call,
+	// so unbounded goroutines can exhaust memory on large account sets.
 	accountGroup := errgroup.Group{}
+	accountGroup.SetLimit(min(runtime.NumCPU(), 8))
 
 	// Process each account in parallel: GetPrivateKey -> SavePrivateKey
 	for _, acc := range accountsList {

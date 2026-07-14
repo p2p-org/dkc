@@ -13,5 +13,9 @@ podman-data
 keystores
 .key
 
-#Mac
+# Mac
 .DS_Store
+
+# Claude
+.claude/worktrees
+.claude/settings.local.json

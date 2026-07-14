@@ -1,53 +1,49 @@
 package bls
 
 import (
-	"context"
-
 	"github.com/herumi/bls-eth-go-binary/bls"
 )
 
-func Split(ctx context.Context, key []byte, threshold uint32) ([][]byte, [][]byte, error) {
+// Split represents key as a polynomial of degree threshold-1: the first
+// coefficient is the key itself, the rest are random. Returned master keys
+// are the serialized coefficients.
+func Split(key []byte, threshold uint32) ([][]byte, [][]byte, error) {
 	var sk bls.SecretKey
 
-	err := sk.Deserialize(key)
-	if err != nil {
+	if err := sk.Deserialize(key); err != nil {
 		return nil, nil, err
 	}
 
-	masterPKs := append([][]byte{}, sk.GetPublicKey().Serialize())
-	masterSKs := append([][]byte{}, sk.Serialize())
+	masterPKs := [][]byte{sk.GetPublicKey().Serialize()}
+	masterSKs := [][]byte{sk.Serialize()}
 
-	// We assume that peers
-	for i := 1; i < int(threshold); i++ {
-		var sk bls.SecretKey
-		sk.SetByCSPRNG() // Shouldn't be a zero (all keys will be equal in that case)
-		masterSKs = append(masterSKs, sk.Serialize())
-		masterPKs = append(masterPKs, sk.GetPublicKey().Serialize())
+	for i := uint32(1); i < threshold; i++ {
+		var coef bls.SecretKey
+		coef.SetByCSPRNG() // Shouldn't be a zero (all keys will be equal in that case)
+		masterSKs = append(masterSKs, coef.Serialize())
+		masterPKs = append(masterPKs, coef.GetPublicKey().Serialize())
 	}
 
 	return masterSKs, masterPKs, nil
 }
 
-func Combine(ctx context.Context, accounts map[uint64][]byte) ([]byte, error) {
+// Combine recovers the original key from at least threshold shards keyed by
+// participant id
+func Combine(shards map[uint64][]byte) ([]byte, error) {
 	var subIDs []bls.ID
 	var subSKs []bls.SecretKey
-	for id, key := range accounts {
+	for id, key := range shards {
 		blsID, err := newBlsID(id)
 		if err != nil {
 			return nil, err
 		}
-		subIDs = append(
-			subIDs,
-			*blsID,
-		)
+		subIDs = append(subIDs, *blsID)
 
-		var mk bls.SecretKey
-		err = mk.Deserialize(key)
-		if err != nil {
+		var sk bls.SecretKey
+		if err := sk.Deserialize(key); err != nil {
 			return nil, err
 		}
-
-		subSKs = append(subSKs, mk)
+		subSKs = append(subSKs, sk)
 	}
 
 	var rk bls.SecretKey
@@ -58,34 +54,32 @@ func Combine(ctx context.Context, accounts map[uint64][]byte) ([]byte, error) {
 	return rk.Serialize(), nil
 }
 
-func SetupParticipants(masterSKs [][]byte, masterPKs [][]byte, ids []uint64, threshold int) (
-	map[uint64][]byte, error,
-) {
-	var mSKs []bls.SecretKey
-	peersIDs := map[uint64][]byte{}
-
+// SetupParticipants derives one key shard per participant id by evaluating
+// the polynomial defined by masterSKs at that id
+func SetupParticipants(masterSKs [][]byte, ids []uint64) (map[uint64][]byte, error) {
+	mSKs := make([]bls.SecretKey, 0, len(masterSKs))
 	for _, s := range masterSKs {
 		var sk bls.SecretKey
-		err := sk.Deserialize(s)
-		if err != nil {
+		if err := sk.Deserialize(s); err != nil {
 			return nil, err
 		}
 		mSKs = append(mSKs, sk)
 	}
 
-	for i := 0; i < threshold; i++ {
-		id, err := newBlsID(ids[i])
+	shards := make(map[uint64][]byte, len(ids))
+	for _, id := range ids {
+		blsID, err := newBlsID(id)
 		if err != nil {
 			return nil, err
 		}
 
 		var sk bls.SecretKey
-		if err := sk.Set(mSKs, id); err != nil {
+		if err := sk.Set(mSKs, blsID); err != nil {
 			return nil, err
 		}
 
-		peersIDs[ids[i]] = sk.Serialize()
+		shards[id] = sk.Serialize()
 	}
 
-	return peersIDs, nil
+	return shards, nil
 }
