@@ -16,5 +16,13 @@
   ],
   "dependencyDashboard": true,
   "semanticCommits": "enabled",
-  "commitMessagePrefix": "chore(deps):"
+  "commitMessagePrefix": "chore(deps):",
+  "vulnerabilityAlerts": {
+    "description": "Security fixes skip the repo-wide minimumReleaseAge soak: this object takes precedence over packageRules, and its PRs also bypass prHourlyLimit / prConcurrentLimit. Vulnerability input comes from OSV (osvVulnerabilityAlerts below), which covers the gomod datasource this repo uses, plus GitHub Dependabot alerts wherever they are enabled.",
+    "enabled": true,
+    "minimumReleaseAge": null,
+    "prCreation": "immediate",
+    "labels": ["renovate", "security"]
+  },
+  "osvVulnerabilityAlerts": true
 }
