@@ -3,6 +3,7 @@
   "extends": ["config:recommended"],
   "prHourlyLimit": 6,
   "minimumReleaseAge": "3 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
   "packageRules": [
     {
       "matchDepTypes": ["action"],
