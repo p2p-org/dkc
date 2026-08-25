@@ -22,6 +22,7 @@ to:
 
 - [Install](#install)
   - [Binaries](#binaries)
+  - [Verifying a release](#verifying-a-release)
   - [Source](#source)
 - [Usage](#usage)
   - [Config](#config)
@@ -36,6 +37,28 @@ to:
 ### Binaries
 
 Binaries for the latest version of `dkc` can be obtained from [the releases page](https://github.com/p2p-org/dkc/releases/latest).
+
+### Verifying a release
+
+`dkc` handles validator private key material, so it is worth checking that the archive you downloaded is the one the release workflow built. Every release archive is signed and carries build provenance.
+
+The signature is keyless: there is no `dkc` public key to distribute, the signature is bound to the identity of the workflow that produced it. Each archive ships with a `.cosign.bundle` beside it, verified with [cosign](https://github.com/sigstore/cosign):
+
+```sh
+$ cosign verify-blob \
+    --bundle dkc-<version>-linux-amd64.tar.gz.cosign.bundle \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity-regexp '^https://github\.com/p2p-org/dkc/' \
+    dkc-<version>-linux-amd64.tar.gz
+```
+
+Build provenance — which workflow, commit and runner produced the archive — is attested to GitHub and checked with the `gh` CLI:
+
+```sh
+$ gh attestation verify dkc-<version>-linux-amd64.tar.gz --repo p2p-org/dkc
+```
+
+Releases also carry a CycloneDX SBOM (`dkc-<version>.cdx.json`) listing every Go module linked into the binaries, signed the same way.
 
 ### Nix
 
