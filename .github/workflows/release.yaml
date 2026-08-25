@@ -198,6 +198,9 @@ jobs:
             ./artifacts/dkc-**.sha256
             ./artifacts/dkc-**.cosign.bundle
             ./artifacts/dkc-**.cdx.json
-          generate_release_notes: true
+          # The release text is written by hand in the GitHub UI. Generating
+          # notes here too produced a second copy of "What's Changed" in an
+          # already-authored release, so CI only attaches assets now.
+          generate_release_notes: false
           fail_on_unmatched_files: true
           prerelease: ${{ env.is_prerelease }}
