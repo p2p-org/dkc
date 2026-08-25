@@ -168,7 +168,10 @@ jobs:
           done
 
       # Read every signature back before publishing it: a bundle nobody can
-      # verify is worse than no bundle, because it looks like protection.
+      # verify is worse than no bundle, because it looks like protection. The
+      # identity is exact rather than a pattern: GITHUB_WORKFLOW_REF expands to
+      # <owner>/<repo>/.github/workflows/<file>@<ref>, so only a signature made
+      # by this release workflow on this tag passes.
       - name: Verify the signatures are readable
         run: |
           shopt -s nullglob
@@ -176,7 +179,7 @@ jobs:
             cosign verify-blob \
               --bundle "${f}.cosign.bundle" \
               --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-              --certificate-identity-regexp "^https://github\.com/${GITHUB_REPOSITORY}/" \
+              --certificate-identity "https://github.com/${GITHUB_WORKFLOW_REF}" \
               "${f}"
           done
 
