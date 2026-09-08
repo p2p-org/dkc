@@ -12,7 +12,7 @@ require (
 	github.com/wealdtech/go-eth2-wallet v1.17.2
 	github.com/wealdtech/go-eth2-wallet-store-filesystem v1.18.1
 	github.com/wealdtech/go-eth2-wallet-types/v2 v2.12.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 )
 
 require (
