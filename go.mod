@@ -3,7 +3,7 @@ module github.com/p2p-org/dkc
 go 1.26.0
 
 require (
-	github.com/herumi/bls-eth-go-binary v1.37.0
+	github.com/herumi/bls-eth-go-binary v1.38.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.10.2
