@@ -4,6 +4,8 @@
   "prHourlyLimit": 6,
   "minimumReleaseAge": "3 days",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "assignees": ["selfuryon", "kjubybot-p2p"],
+  "reviewers": ["selfuryon", "kjubybot-p2p"],
   "packageRules": [
     {
       "matchDepTypes": ["action"],
