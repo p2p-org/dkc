@@ -4,6 +4,8 @@
   "prHourlyLimit": 6,
   "minimumReleaseAge": "3 days",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "assignees": ["selfuryon"],
+  "reviewers": ["selfuryon"],
   "packageRules": [
     {
       "matchDepTypes": ["action"],
