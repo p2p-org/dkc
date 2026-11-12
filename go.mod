@@ -12,7 +12,7 @@ require (
 	github.com/wealdtech/go-eth2-wallet v1.17.2
 	github.com/wealdtech/go-eth2-wallet-store-filesystem v1.18.1
 	github.com/wealdtech/go-eth2-wallet-types/v2 v2.12.0
-	golang.org/x/sync v0.24.0
+	golang.org/x/sync v0.25.0
 )
 
 require (
@@ -48,9 +48,9 @@ require (
 	github.com/wealdtech/go-eth2-wallet-store-scratch v1.7.2 // indirect
 	github.com/wealdtech/go-indexer v1.1.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.56.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/crypto v0.59.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
