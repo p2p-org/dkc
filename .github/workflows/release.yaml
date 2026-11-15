@@ -41,7 +41,7 @@ jobs:
 
       - name: Parse semver
         id: semver
-        uses: madhead/semver-utils@092ff2bc46cae343afb90c5efbd606411fc45b49 # v5.1.1
+        uses: madhead/semver-utils@b1422b43403574ed9de5b73bc37b3a33fa63ba48 # v5.1.2
         with:
           version: ${{ steps.enver.outputs.release_version }}
 
