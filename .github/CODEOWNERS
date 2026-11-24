@@ -1,0 +1,5 @@
+# Every change is reviewed by the etherno team.
+*         @p2p-org/etherno-team
+
+# CI/CD: workflows decide what is published and with which credentials.
+/.github/ @p2p-org/etherno-team
